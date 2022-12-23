@@ -107,3 +107,7 @@ export const ceil_with_enclosure=(number, enclosure=0.5)=>{
         return Math.round(number);
     }
 }
+export const random_rgba=()=>{
+    var o = Math.round, r = Math.random, s = 255;
+    return 'rgba(' + o(r()*s) + ',' + o(r()*s) + ',' + o(r()*s) + ',1)';
+}

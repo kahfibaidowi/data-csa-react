@@ -66,7 +66,8 @@ class KabupatenKota extends React.Component{
                 params:{
                     per_page:"",
                     page:1,
-                    q:""
+                    q:"",
+                    pulau:""
                 },
             })
             .then(res=>res.data)
@@ -98,7 +99,7 @@ class KabupatenKota extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Gets Data Failed!", {position:"bottom-center"})
         })
@@ -121,7 +122,7 @@ class KabupatenKota extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Gets Data Failed!", {position:"bottom-center"})
             this.setLoading(false)
@@ -136,7 +137,7 @@ class KabupatenKota extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             
             if(err.response.data?.error=="VALIDATION_ERROR")
@@ -154,7 +155,7 @@ class KabupatenKota extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             
             if(err.response.data?.error=="VALIDATION_ERROR")
@@ -171,7 +172,7 @@ class KabupatenKota extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Remove Data Failed!", {position:"bottom-center"})
         })

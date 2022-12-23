@@ -15,18 +15,22 @@ import swal from "sweetalert2"
 import withReactContent from 'sweetalert2-react-content'
 import { Formik } from "formik"
 import * as yup from "yup"
+import CreatableSelect from "react-select/creatable"
+import Select from "react-select"
 
 
 const MySwal=withReactContent(swal)
 
 class Provinsi extends React.Component{
     state={
+        pulau_form:[],
         region:{
             data:[],
             per_page:15,
             page:1,
             last_page:0,
             q:"",
+            pulau:"",
             is_loading:false
         },
         tambah_region:{
@@ -53,10 +57,21 @@ class Provinsi extends React.Component{
 
     componentDidMount=()=>{
         this.fetchRegions()
+        this.fetchPulauForm()
     }
 
     //REQUEST, QUERY, MUTATION
     request={
+        apiGetsPulauForm:async()=>{
+            return await api(access_token()).get("/region/type/pulau", {
+                params:{
+                    per_page:"",
+                    page:1,
+                    q:""
+                }
+            })
+            .then(res=>res.data)
+        },
         apiGetsRegion:async(params)=>{
             return await api(access_token()).get("/region/type/provinsi", {
                 params:params
@@ -74,6 +89,21 @@ class Provinsi extends React.Component{
         }
     }
     //--data
+    fetchPulauForm=async()=>{
+        await this.request.apiGetsPulauForm()
+        .then(data=>{
+            this.setState({
+                pulau_form:data.data
+            })
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
     fetchRegions=async()=>{
         const {data, ...params}=this.state.region
 
@@ -92,7 +122,7 @@ class Provinsi extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Gets Data Failed!", {position:"bottom-center"})
             this.setLoading(false)
@@ -102,12 +132,13 @@ class Provinsi extends React.Component{
         await this.request.apiAddRegion(values)
         .then(data=>{
             this.fetchRegions()
+            this.fetchPulauForm()
             this.toggleModalTambah()
         })
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             
             if(err.response.data?.error=="VALIDATION_ERROR")
@@ -120,12 +151,13 @@ class Provinsi extends React.Component{
         await this.request.apiUpdateRegion(values)
         .then(data=>{
             this.fetchRegions()
+            this.fetchPulauForm()
             this.toggleModalEdit()
         })
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             
             if(err.response.data?.error=="VALIDATION_ERROR")
@@ -142,7 +174,7 @@ class Provinsi extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Remove Data Failed!", {position:"bottom-center"})
         })
@@ -192,6 +224,9 @@ class Provinsi extends React.Component{
                     this.timeout=setTimeout(()=>{
                         this.fetchRegions()
                     }, 500);
+                break
+                case "pulau":
+                    this.fetchRegions()
                 break
             }
         })
@@ -256,7 +291,7 @@ class Provinsi extends React.Component{
 
     //RENDER
     render(){
-        const {region, tambah_region, edit_region}=this.state
+        const {region, pulau_form, tambah_region, edit_region}=this.state
 
         return (
             <>
@@ -282,6 +317,7 @@ class Provinsi extends React.Component{
                                 <div class="card-body">
                                     <Table 
                                         data={region}
+                                        pulau_form={pulau_form}
                                         setPerPage={this.setPerPage}
                                         goToPage={this.goToPage}
                                         typeFilter={this.typeFilter}
@@ -296,12 +332,14 @@ class Provinsi extends React.Component{
     
                 <ModalTambah
                     data={tambah_region}
+                    pulau_form={pulau_form}
                     toggleModalTambah={this.toggleModalTambah}
                     addRegion={this.addRegion}
                 />
     
                 <ModalEdit
                     data={edit_region}
+                    pulau_form={pulau_form}
                     toggleModalEdit={this.toggleModalEdit}
                     updateRegion={this.updateRegion}
                 />
@@ -310,11 +348,31 @@ class Provinsi extends React.Component{
     }
 }
 
-const Table=({data, setPerPage, goToPage, typeFilter, toggleConfirmHapus, toggleModalEdit})=>{
+const Table=({data, pulau_form, setPerPage, goToPage, typeFilter, toggleConfirmHapus, toggleModalEdit})=>{
+
+    const pulau_options=()=>{
+        let data=pulau_form.map(pf=>{
+            return {value:pf.pulau, label:pf.pulau}
+        })
+        data=[{label:"Semua Pulau", value:""}].concat(data)
+
+        return data
+    }
 
     return (
         <>
             <div className="d-flex">
+                <div style={{width:"200px"}} className="me-2">
+                    <Select
+                        options={pulau_options()}
+                        value={pulau_options().find(f=>f.value==data.pulau)}
+                        onChange={e=>{
+                            typeFilter({target:{name:"pulau", value:e.value}})
+                        }}
+                        placeholder="Semua Pulau"
+                        classNamePrefix="form-select"
+                    />
+                </div>
                 <div style={{width:"200px"}} className="me-2">
                     <input
                         type="text"
@@ -426,7 +484,16 @@ const Table=({data, setPerPage, goToPage, typeFilter, toggleConfirmHapus, toggle
     )
 }
 
-const ModalTambah=({data, toggleModalTambah, addRegion})=>{
+const ModalTambah=({data, pulau_form, toggleModalTambah, addRegion})=>{
+
+    const pulau_options=()=>{
+        let data=pulau_form.map(pf=>{
+            return {value:pf.pulau, label:pf.pulau}
+        })
+        data=[{label:"Pilih Pulau", value:""}].concat(data)
+
+        return data
+    }
 
     return (
         <Modal show={data.is_open} onHide={toggleModalTambah} backdrop="static" size="sm" scrollable>
@@ -464,12 +531,13 @@ const ModalTambah=({data, toggleModalTambah, addRegion})=>{
                             </div>
                             <div className="mb-3">
                                 <label className="my-1 me-2" for="country">Pulau</label>
-                                <input 
-                                    type="text" 
-                                    className="form-control"
-                                    name="pulau"
-                                    onChange={formik.handleChange}
-                                    value={formik.values.pulau}
+                                <CreatableSelect
+                                    options={pulau_options()}
+                                    onChange={e=>{
+                                        formik.setFieldValue("pulau", e.value)
+                                    }}
+                                    value={pulau_options().find(f=>f.value==formik.values.pulau)}
+                                    placeholder="Pilih Pulau"
                                 />
                             </div>
                             <div className="mb-3">
@@ -571,8 +639,17 @@ const ModalTambah=({data, toggleModalTambah, addRegion})=>{
     )
 }
 
-const ModalEdit=({data, toggleModalEdit, updateRegion})=>{
+const ModalEdit=({data, pulau_form, toggleModalEdit, updateRegion})=>{
     
+    const pulau_options=()=>{
+        let data=pulau_form.map(pf=>{
+            return {value:pf.pulau, label:pf.pulau}
+        })
+        data=[{label:"Pilih Pulau", value:""}].concat(data)
+
+        return data
+    }
+
     return (
         <Modal show={data.is_open} onHide={toggleModalEdit} backdrop="static" size="sm" scrollable>
             <Formik
@@ -609,12 +686,13 @@ const ModalEdit=({data, toggleModalEdit, updateRegion})=>{
                             </div>
                             <div className="mb-3">
                                 <label className="my-1 me-2" for="country">Pulau</label>
-                                <input 
-                                    type="text" 
-                                    className="form-control"
-                                    name="pulau"
-                                    onChange={formik.handleChange}
-                                    value={formik.values.pulau}
+                                <CreatableSelect
+                                    options={pulau_options()}
+                                    onChange={e=>{
+                                        formik.setFieldValue("pulau", e.value)
+                                    }}
+                                    value={pulau_options().find(f=>f.value==formik.values.pulau)}
+                                    placeholder="Pilih Pulau"
                                 />
                             </div>
                             <div className="mb-3">

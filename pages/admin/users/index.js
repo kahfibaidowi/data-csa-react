@@ -101,7 +101,7 @@ class Users extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Gets Data Failed!", {position:"bottom-center"})
             this.setLoading(false)
@@ -116,7 +116,7 @@ class Users extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             
             if(err.response.data?.error=="VALIDATION_ERROR")
@@ -134,7 +134,7 @@ class Users extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             
             if(err.response.data?.error=="VALIDATION_ERROR")
@@ -151,7 +151,7 @@ class Users extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Remove Data Failed!", {position:"bottom-center"})
         })
@@ -522,9 +522,7 @@ const ModalTambah=({data, toggleModalTambah, addUser, request})=>{
                                     value={formik.values.role}
                                 >
                                     <option value="admin">Admin</option>
-                                    <option value="dinkes">Dinas Kesehatan</option>
-                                    <option value="dinas">Dinas</option>
-                                    <option value="posyandu">Posyandu</option>
+                                    <option value="kementan">Kementrian Pertanian</option>
                                 </select>
                             </div>
                             <div className="mb-3">
@@ -577,7 +575,7 @@ const ModalTambah=({data, toggleModalTambah, addUser, request})=>{
                                                     .catch(err=>{
                                                         if(err.response.status===401){
                                                             localStorage.removeItem("login_data")
-                                                            Router.push("/")
+                                                            Router.push("/login")
                                                         }
                                                         toast.error("Upload File Failed!", {position:"bottom-center"})
                                                     })
@@ -659,23 +657,9 @@ const ModalEdit=({data, toggleModalEdit, updateUser, request})=>{
                 {formik=>(
                     <form onSubmit={formik.handleSubmit}>
                         <Modal.Header closeButton>
-                            <h4 className="modal-title">Tambah User</h4>
+                            <h4 className="modal-title">Edit User</h4>
                         </Modal.Header>
                         <Modal.Body>
-                            <div className="mb-3">
-                                <label className="my-1 me-2" for="country">Role/Level</label>
-                                <select 
-                                    className="form-select" 
-                                    name="role"
-                                    onChange={formik.handleChange}
-                                    value={formik.values.role}
-                                >
-                                    <option value="admin">Admin</option>
-                                    <option value="dinkes">Dinas Kesehatan</option>
-                                    <option value="dinas">Dinas</option>
-                                    <option value="posyandu">Posyandu</option>
-                                </select>
-                            </div>
                             <div className="mb-3">
                                 <label className="my-1 me-2" for="country">Username</label>
                                 <input 
@@ -727,7 +711,7 @@ const ModalEdit=({data, toggleModalEdit, updateUser, request})=>{
                                                     .catch(err=>{
                                                         if(err.response.status===401){
                                                             localStorage.removeItem("login_data")
-                                                            Router.push("/")
+                                                            Router.push("/login")
                                                         }
                                                         toast.error("Upload File Failed!", {position:"bottom-center"})
                                                     })

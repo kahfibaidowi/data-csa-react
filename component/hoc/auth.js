@@ -29,7 +29,7 @@ export default function withAuth(WrappedComponent, data){
             .catch(err=>{
                 if(err.response.status===401){
                     localStorage.removeItem("login_data")
-                    Router.push("/")
+                    Router.push("/login")
                 }
             })
         }

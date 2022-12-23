@@ -1,7 +1,8 @@
 import "../styles/light/style.min.css"
 import 'react-bootstrap-typeahead/css/Typeahead.css'
 import 'react-toastify/dist/ReactToastify.css'
-import 'react-base-table/styles.css'
+import 'react-data-grid/lib/styles.css'
+import 'leaflet/dist/leaflet.css'
 import "../styles/globals.css"
 
 import { ToastContainer } from "react-toastify"

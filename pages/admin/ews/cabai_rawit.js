@@ -8,7 +8,7 @@ import { api } from "../../../config/api"
 import { access_token, isUndefined } from "../../../config/config"
 import { toast } from "react-toastify"
 import Router from "next/router"
-import { FiChevronLeft, FiChevronRight, FiEdit, FiPlus, FiTrash, FiTrash2, FiUpload } from "react-icons/fi"
+import { FiChevronLeft, FiChevronRight, FiDownload, FiEdit, FiExternalLink, FiPlus, FiTrash, FiTrash2, FiUpload, FiX } from "react-icons/fi"
 import Avatar from "../../../component/ui/avatar"
 import { Modal, Spinner } from "react-bootstrap"
 import swal from "sweetalert2"
@@ -20,17 +20,22 @@ import { Formik } from "formik"
 import * as yup from "yup"
 import NumberFormat from "react-number-format"
 import VirtualTable, { VirtualTableContext } from "../../../component/ui/virtual_table"
+import BaseTable, {AutoResizer, Column} from "react-base-table"
+import DataGrid from 'react-data-grid'
+
 
 
 class CabaiRawit extends React.Component{
     state={
         provinsi_form:[],
-        regency_form:[],
+        pulau_form:[],
         ews:{
             per_page:"",
             q:"",
             type:"cabai_rawit",
             tahun:"",
+            province_id:"",
+            pulau:"",
             data:[],
             is_loading:false
         },
@@ -41,13 +46,40 @@ class CabaiRawit extends React.Component{
     }
 
     componentDidMount=()=>{
+        this.fetchPulauForm()
     }
 
     //REQUEST, QUERY, MUTATION
+    abortController=new AbortController()
     request={
+        apiGetsPulauForm:async()=>{
+            return await api(access_token()).get("/region/type/pulau", {
+                params:{
+                    per_page:"",
+                    page:1,
+                    q:""
+                }
+            })
+            .then(res=>res.data)
+        },
+        apiGetsProvinsiForm:async(pulau)=>{
+            return await api(access_token()).get("/region/type/provinsi", {
+                params:{
+                    per_page:"",
+                    page:1,
+                    q:"",
+                    pulau:pulau
+                },
+            })
+            .then(res=>res.data)
+        },
         apiGetsEws:async(params)=>{
+            this.abortController.abort()
+            this.abortController=new AbortController()
+
             return await api(access_token()).get("/ews/type/kabupaten_kota", {
-                params:params
+                params:params,
+                signal:this.abortController.signal
             })
             .then(res=>res.data)
         },
@@ -65,6 +97,38 @@ class CabaiRawit extends React.Component{
         }
     }
     //--data
+    fetchPulauForm=async()=>{
+        await this.request.apiGetsPulauForm()
+        .then(data=>{
+            this.setState({
+                pulau_form:data.data
+            })
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
+    fetchProvinsiForm=async()=>{
+        const {ews}=this.state
+
+        await this.request.apiGetsProvinsiForm(ews.pulau)
+        .then(data=>{
+            this.setState({
+                provinsi_form:data.data
+            })
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
     fetchEws=async()=>{
         const {data, ...params}=this.state.ews
 
@@ -81,39 +145,55 @@ class CabaiRawit extends React.Component{
         await this.request.apiGetsEws(params)
         .then(data=>{
             let new_data=[]
-            data.data.map(prov=>{
-                const add_data=prov.kabupaten_kota.map(kab=>{
-                    let ews=[]
-                    this.months_year().map(month=>{
-                        const find=kab.ews.find(f=>f.bulan.toString()==month.toString())
-                        if(!isUndefined(find)){
-                            ews=ews.concat([find])
+            data.data.map(kabkot=>{
+                let ews=[]
+                let curah_hujan=[]
+                this.months_year().map(month=>{
+                    //ews
+                    const find=kabkot.ews.find(f=>f.bulan.toString()==month.toString())
+                    if(!isUndefined(find)){
+                        ews=ews.concat([find])
+                    }
+                    else{
+                        const data_ews={
+                            id_region:kabkot.id_region,
+                            type:params.type,
+                            tahun:params.tahun,
+                            bulan:month,
+                            curah_hujan:"",
+                            opt_utama:[],
+                            produksi:""
                         }
-                        else{
-                            const data_ews={
-                                id_region:kab.id_region,
-                                type:params.type,
-                                tahun:params.tahun,
-                                bulan:month,
-                                curah_hujan:"",
-                                opt_utama:[],
-                                produksi:""
-                            }
-                            ews=ews.concat([data_ews])
-                        }
-                    })
+                        ews=ews.concat([data_ews])
+                    }
 
-                    return Object.assign({}, kab, {
-                        provinsi:{
-                            id_region:prov.id_region,
-                            nested:prov.nested,
-                            type:prov.type,
-                            region:prov.region,
-                            data:prov.data,
-                            count_kabupaten_kota:prov.kabupaten_kota.length
-                        },
-                        ews:ews
-                    })
+                    //curah hujan
+                    const find_curah_hujan=kabkot.curah_hujan.find(f=>f.bulan.toString()==month.toString())
+                    if(!isUndefined(find_curah_hujan)){
+                        curah_hujan=curah_hujan.concat([find_curah_hujan])
+                    }
+                    else{
+                        const data_curah_hujan={
+                            id_region:kabkot.id_region,
+                            tahun:params.tahun,
+                            bulan:month,
+                            curah_hujan:"",
+                            curah_hujan_normal:"",
+                            sifat:""
+                        }
+                        curah_hujan=curah_hujan.concat([data_curah_hujan])
+                    }
+                })
+
+                const add_data=Object.assign({}, kabkot, {
+                    provinsi:{
+                        id_region:kabkot.provinsi.id_region,
+                        nested:kabkot.provinsi.nested,
+                        type:kabkot.provinsi.type,
+                        region:kabkot.provinsi.region
+                    },
+                    ews:ews,
+                    curah_hujan:curah_hujan
                 })
                 new_data=new_data.concat(add_data)
             })
@@ -128,7 +208,7 @@ class CabaiRawit extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Gets Data Failed!", {position:"bottom-center"})
             this.setLoading(false)
@@ -153,7 +233,7 @@ class CabaiRawit extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             
             if(err.response.data?.error=="VALIDATION_ERROR")
@@ -163,7 +243,7 @@ class CabaiRawit extends React.Component{
         })
     }
 
-    //TABLE
+    //DATA
     months_year=()=>{
         let months=[]
         for(var i=1; i<=12; i++){
@@ -196,7 +276,18 @@ class CabaiRawit extends React.Component{
                     }, 500);
                 break
                 case "tahun":
+                case "province_id":
                     this.fetchEws()
+                break
+                case "pulau":
+                    this.setState({
+                        ews:update(this.state.ews, {
+                            province_id:{$set:""}
+                        })
+                    }, ()=>{
+                        this.fetchProvinsiForm()
+                        this.fetchEws()
+                    })
                 break
             }
         })
@@ -218,7 +309,7 @@ class CabaiRawit extends React.Component{
 
     //RENDER
     render(){
-        const {ews, edit_ews}=this.state
+        const {ews, edit_ews, provinsi_form, pulau_form}=this.state
 
         return (
             <>
@@ -239,6 +330,8 @@ class CabaiRawit extends React.Component{
                                         typeFilter={this.typeFilter}
                                         toggleModalEdit={this.toggleModalEdit}
                                         months_year={this.months_year}
+                                        provinsi_form={provinsi_form}
+                                        pulau_form={pulau_form}
                                     />
                                 </div>
                             </div>
@@ -252,13 +345,16 @@ class CabaiRawit extends React.Component{
                     updateEws={this.updateEws}
                     request={this.request}
                 />
+
             </>
         )
     }
 }
 
-const Table=({data, months_year, typeFilter, toggleModalEdit})=>{
-    
+const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
+    const [full_screen, setFullScreen]=useState(false)
+
+    //options
     const tahun_options=()=>{
         const year=(new Date()).getFullYear()
 
@@ -269,6 +365,71 @@ const Table=({data, months_year, typeFilter, toggleModalEdit})=>{
 
         return [{value:"", label:"Pilih Tahun"}].concat(years)
     }
+    const provinsi_options=()=>{
+        let data=provinsi_form.map(op=>{
+            return {label:op.region, value:op.id_region}
+        })
+        data=[{label:"Semua Provinsi", value:""}].concat(data)
+
+        return data
+    }
+    const pulau_options=()=>{
+        let data=pulau_form.map(p=>{
+            return {label:p.pulau, value:p.pulau}
+        })
+        data=[{label:"Semua Pulau", value:""}].concat(data)
+
+        return data
+    }
+    const data_generated=()=>{
+        let new_data=[]
+        
+        if(!data.is_loading){
+            for(var i=0; i<data.data.length; i++){
+                const test=[
+                    Object.assign({}, data.data[i], {
+                        index:i,
+                        index_table:i*8+0
+                    }),
+                    Object.assign({}, data.data[i], {
+                        index:i,
+                        index_table:i*8+1
+                    }),
+                    Object.assign({}, data.data[i], {
+                        index:i,
+                        index_table:i*8+2
+                    }),
+                    Object.assign({}, data.data[i], {
+                        index:i,
+                        index_table:i*8+3
+                    }),
+                    Object.assign({}, data.data[i], {
+                        index:i,
+                        index_table:i*8+4
+                    }),
+                    Object.assign({}, data.data[i], {
+                        index:i,
+                        index_table:i*8+5
+                    }),
+                    Object.assign({}, data.data[i], {
+                        index:i,
+                        index_table:i*8+6
+                    }),
+                    Object.assign({}, data.data[i], {
+                        index:i,
+                        index_table:i*8+7
+                    })
+                ]
+    
+                new_data=new_data.concat(test)
+            }
+            if(data.data.length>0){
+                new_data=new_data.concat([{index:-1, index_table:data.data.length*8}, {index:-1, index_table:data.length*8+1}])
+            }
+        }
+        
+        return new_data
+    }
 
     //helper
     const valueBanjir=(str_value)=>{
@@ -277,13 +438,13 @@ const Table=({data, months_year, typeFilter, toggleModalEdit})=>{
         if(value=="") return ""
 
         if(value<=150){
-            return "A"
+            return "Aman"
         }
         else if(value>150 && value<=200){
-            return "W"
+            return "Waspada"
         }
         else if(value>200){
-            return "R"
+            return "Rawan"
         }
     }
     const valueKekeringan=(str_value)=>{
@@ -292,242 +453,1034 @@ const Table=({data, months_year, typeFilter, toggleModalEdit})=>{
         if(value=="") return ""
 
         if(value<60){
-            return "R"
+            return "Rawan"
         }
         else if(value>=60 && value<75){
-            return "W"
+            return "Waspada"
         }
         else if(value>=75){
-            return "A"
+            return "Aman"
         }
 
         return ""
     }
+    const valueSifatHujan=(curah_hujan, normal)=>{
+        if(curah_hujan.toString().trim()==""||normal.toString().trim()==""){
+            return ""
+        }
+        if(Number(normal)==0){
+            return "?";
+        }
 
-    //custom render
-    const renderRow=(idx, row)=>{
-        return (
-            <>
-                <tr>
-                    <td rowSpan={7}>{idx+1}</td>
-                    <td rowSpan={7}>{row.region}</td>
-                    <td>CH (mm)</td>
-                    {row.ews.map(e=>(<td>{e.curah_hujan}</td>))}
-                </tr>
-                <tr>
-                    <td>Sifat</td>
-                    {row.ews.map(e=>(<td></td>))}
-                </tr>
-                <tr>
-                    <td>Banjir</td>
-                    {row.ews.map(e=>(<td>{valueBanjir(e.curah_hujan)}</td>))}
-                </tr>
-                <tr>
-                    <td>Kering</td>
-                    {row.ews.map(e=>(<td>{valueKekeringan(e.curah_hujan)}</td>))}
-                </tr>
-                <tr>
-                    <td>OPT Utama</td>
-                    {row.ews.map(e=>(
-                        <td className="px-0" style={{height:"100px"}} title={e.opt_utama.join("; ")}>
-                            <div style={{overflow:"auto"}} className="w-100 h-100 px-2">
-                                <span className="d-flex" style={{height:"100%", whiteSpace:"pre-wrap", wordWrap:"break-word"}}>
-                                    {e.opt_utama.join("; ")}
-                                </span>
-                            </div>
-                        </td>
-                    ))}
-                </tr>
-                <tr>
-                    <td>Produksi (ton)</td>
-                    {row.ews.map(e=>(
-                        <td>
+        const value=curah_hujan/normal;
+        if(value<0.85){
+            return "Bawah Normal";
+        }
+        if(value>=0.85 && value<=1.15){
+            return "Normal";
+        }
+        if(value>1.15){
+            return "Atas Normal";
+        }
+    }
+
+    //table
+    const columns=[
+        {
+            key:'no',
+            name:'#',
+            width: 50,
+            frozen: true,
+            formatter:({row})=>{
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.index+1}</span>
+                }
+                else{
+                    return <span></span>
+                }
+            }
+        },
+        {
+            key: 'kabupaten_kota',
+            name: 'Kabupaten/Kota',
+            width: 220,
+            resizable: true,
+            frozen: true,
+            formatter:({row})=>{
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.region}</span>
+                }
+                else{
+                    return <span></span>
+                }
+            }
+        },
+        {
+            key: 'parameter',
+            name: 'Parameter',
+            width: 150,
+            frozen: true,
+            formatter:({row})=>{
+                if(row.index*8+0==row.index_table){
+                    return <span>CH (mm)</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>CH Normal (mm)</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>Sifat</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>Banjir</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>Kering</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return <span>OPT Utama</span>
+                }
+                else if(row.index*8+6==row.index_table){
+                    return <span>Produksi (ton)</span>
+                }
+                else{
+                    return <span></span>
+                }
+            }
+        },
+        {
+            key: 'bulan1',
+            name: '1',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=0
+    
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return (
+                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
+                            {row.ews[row_index].opt_utama.join("; ")}
+                        </div>
+                    )
+                }
+                else if(row.index*8+6==row.index_table){
+                    return (
+                        <span>
                             <NumberFormat
                                 displayType="text" 
-                                value={e.produksi}
+                                value={row.ews[row_index].produksi}
                                 thousandSeparator={true}
                             />
-                        </td>
-                    ))}
-                </tr>
-                <tr>
-                    <td></td>
-                    {row.ews.map(e=>(
-                        <td className="p-0">
-                            <div className="d-grid gap-2 h-100">
-                                <button 
-                                    className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                    type="button"
-                                    onClick={ev=>toggleModalEdit(idx, e, true)}
-                                >
-                                    Edit
-                                </button>
-                            </div>
-                        </td>
-                    ))}
-                </tr>
-            </>
-        )
-    }
-    const Row=({index})=>{
-        return renderRow(index, data.data[index])
-    }
-    const Inner=React.forwardRef(
-        function Inner({children, ...rest}, ref){
-            const {top, setColRefs, isLoading, dataLength}=useContext(VirtualTableContext)
-            
-            // //ref for column
-            // const refCol1=useRef(null)
-            // const refCol2=useRef(null)
-            // const refCol3=useRef(null)
-            // const refColArr=[
-            //     useRef(null),
-            //     useRef(null),
-            //     useRef(null),
-            //     useRef(null),
-            //     useRef(null),
-            //     useRef(null),
-            //     useRef(null),
-            //     useRef(null),
-            //     useRef(null),
-            //     useRef(null),
-            //     useRef(null),
-            //     useRef(null)
-            // ]
-            // const sizeRefCol1=useSize(refCol1)
-            // const sizeRefCol2=useSize(refCol2)
-            // const sizeRefCol3=useSize(refCol3)
-            // const sizeRefColArr=[
-            //     useSize(refColArr[0]),
-            //     useSize(refColArr[1]),
-            //     useSize(refColArr[2]),
-            //     useSize(refColArr[3]),
-            //     useSize(refColArr[4]),
-            //     useSize(refColArr[5]),
-            //     useSize(refColArr[6]),
-            //     useSize(refColArr[7]),
-            //     useSize(refColArr[8]),
-            //     useSize(refColArr[9]),
-            //     useSize(refColArr[10]),
-            //     useSize(refColArr[11]),
-            // ]
-
-            // //ref for row opt utama
-
-            // useEffect(()=>{
-            //     setColRefs([sizeRefCol1, sizeRefCol2, sizeRefCol3, sizeRefColArr])
-            // }, [sizeRefCol1, sizeRefCol2, sizeRefCol3, sizeRefCol1])
-
-            return (
-                <div {...rest} ref={ref}>
-                    <table className='table table-bordered' style={{top, position: 'absolute', width: '100%', tableLayout:"fixed"}}>
-                        <thead className="thead-light cell-sm no-display">
-                            <tr>
-                                <th rowSpan={2} className="py-0" width="50"></th>
-                                <th rowSpan={2} className="py-0" style={{width:"220px"}}></th>
-                                <th rowSpan={2} className="py-0" style={{width:"120px"}}></th>
-                                <th className="text-center py-0" colSpan={12}></th>
-                            </tr>
-                            <tr>
-                                {months_year().map((month, idx)=>(
-                                    <th key={month} className="py-0" width="300"></th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="cell-sm">
-                            {!isLoading?
-                                <>
-                                    {children}
-                                    {dataLength==0&&
-                                        <tr>
-                                            <td colSpan={16} className="text-center py-2">Data tidak ditemukan!</td>
-                                        </tr>
-                                    }
-                                </>
-                            :
-                                <tr>
-                                    <td colSpan={16} className="text-center py-2">
-                                        <div className="d-flex align-items-center justify-content-center">
-                                            <Spinner
-                                                as="span"
-                                                animation="border"
-                                                size="sm"
-                                                role="status"
-                                                aria-hidden="true"
-                                                className="me-2"
-                                            />
-                                            Loading...
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            )
+                        </span>
+                    )
+                }
+                else if(row.index*8+7==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan2',
+            name: '2',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=1
+    
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return (
+                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
+                            {row.ews[row_index].opt_utama.join("; ")}
+                        </div>
+                    )
+                }
+                else if(row.index*8+6==row.index_table){
+                    return (
+                        <span>
+                            <NumberFormat
+                                displayType="text" 
+                                value={row.ews[row_index].produksi}
+                                thousandSeparator={true}
+                            />
+                        </span>
+                    )
+                }
+                else if(row.index*8+7==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan3',
+            name: '3',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=2
+    
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return (
+                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
+                            {row.ews[row_index].opt_utama.join("; ")}
+                        </div>
+                    )
+                }
+                else if(row.index*8+6==row.index_table){
+                    return (
+                        <span>
+                            <NumberFormat
+                                displayType="text" 
+                                value={row.ews[row_index].produksi}
+                                thousandSeparator={true}
+                            />
+                        </span>
+                    )
+                }
+                else if(row.index*8+7==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan4',
+            name: '4',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=3
+    
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return (
+                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
+                            {row.ews[row_index].opt_utama.join("; ")}
+                        </div>
+                    )
+                }
+                else if(row.index*8+6==row.index_table){
+                    return (
+                        <span>
+                            <NumberFormat
+                                displayType="text" 
+                                value={row.ews[row_index].produksi}
+                                thousandSeparator={true}
+                            />
+                        </span>
+                    )
+                }
+                else if(row.index*8+7==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan5',
+            name: '5',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=4
+    
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return (
+                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
+                            {row.ews[row_index].opt_utama.join("; ")}
+                        </div>
+                    )
+                }
+                else if(row.index*8+6==row.index_table){
+                    return (
+                        <span>
+                            <NumberFormat
+                                displayType="text" 
+                                value={row.ews[row_index].produksi}
+                                thousandSeparator={true}
+                            />
+                        </span>
+                    )
+                }
+                else if(row.index*8+7==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan6',
+            name: '6',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=5
+    
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return (
+                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
+                            {row.ews[row_index].opt_utama.join("; ")}
+                        </div>
+                    )
+                }
+                else if(row.index*8+6==row.index_table){
+                    return (
+                        <span>
+                            <NumberFormat
+                                displayType="text" 
+                                value={row.ews[row_index].produksi}
+                                thousandSeparator={true}
+                            />
+                        </span>
+                    )
+                }
+                else if(row.index*8+7==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan7',
+            name: '7',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=6
+    
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return (
+                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
+                            {row.ews[row_index].opt_utama.join("; ")}
+                        </div>
+                    )
+                }
+                else if(row.index*8+6==row.index_table){
+                    return (
+                        <span>
+                            <NumberFormat
+                                displayType="text" 
+                                value={row.ews[row_index].produksi}
+                                thousandSeparator={true}
+                            />
+                        </span>
+                    )
+                }
+                else if(row.index*8+7==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan8',
+            name: '8',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=7
+    
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return (
+                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
+                            {row.ews[row_index].opt_utama.join("; ")}
+                        </div>
+                    )
+                }
+                else if(row.index*8+6==row.index_table){
+                    return (
+                        <span>
+                            <NumberFormat
+                                displayType="text" 
+                                value={row.ews[row_index].produksi}
+                                thousandSeparator={true}
+                            />
+                        </span>
+                    )
+                }
+                else if(row.index*8+7==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan9',
+            name: '9',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=8
+    
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return (
+                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
+                            {row.ews[row_index].opt_utama.join("; ")}
+                        </div>
+                    )
+                }
+                else if(row.index*8+6==row.index_table){
+                    return (
+                        <span>
+                            <NumberFormat
+                                displayType="text" 
+                                value={row.ews[row_index].produksi}
+                                thousandSeparator={true}
+                            />
+                        </span>
+                    )
+                }
+                else if(row.index*8+7==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan10',
+            name: '10',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=9
+    
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return (
+                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
+                            {row.ews[row_index].opt_utama.join("; ")}
+                        </div>
+                    )
+                }
+                else if(row.index*8+6==row.index_table){
+                    return (
+                        <span>
+                            <NumberFormat
+                                displayType="text" 
+                                value={row.ews[row_index].produksi}
+                                thousandSeparator={true}
+                            />
+                        </span>
+                    )
+                }
+                else if(row.index*8+7==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan11',
+            name: '11',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=10
+    
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return (
+                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
+                            {row.ews[row_index].opt_utama.join("; ")}
+                        </div>
+                    )
+                }
+                else if(row.index*8+6==row.index_table){
+                    return (
+                        <span>
+                            <NumberFormat
+                                displayType="text" 
+                                value={row.ews[row_index].produksi}
+                                thousandSeparator={true}
+                            />
+                        </span>
+                    )
+                }
+                else if(row.index*8+7==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan12',
+            name: '12',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=11
+    
+                if(row.index*8+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*8+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*8+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*8+3==row.index_table){
+                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+4==row.index_table){
+                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*8+5==row.index_table){
+                    return (
+                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
+                            {row.ews[row_index].opt_utama.join("; ")}
+                        </div>
+                    )
+                }
+                else if(row.index*8+6==row.index_table){
+                    return (
+                        <span>
+                            <NumberFormat
+                                displayType="text" 
+                                value={row.ews[row_index].produksi}
+                                thousandSeparator={true}
+                            />
+                        </span>
+                    )
+                }
+                else if(row.index*8+7==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'blankcell1',
+            name: '',
+            width: 150,
+            resizable: true,
+            formatter:(row)=>{
+                return <></>
+            }
         }
-    )
-    const Header=(props)=>{
-        const {colRefs}=useContext(VirtualTableContext)
+    ]
 
-        return (
-            <div>
-                <table className="table table-bordered" style={{width:"100%", tableLayout:"fixed"}}>
-                    <thead className="thead-light cell-sm">
-                        <tr>
-                            <th rowSpan={2} className="" width="50">#</th>
-                            <th rowSpan={2} className="" style={{width:"220px"}}>Kabupaten/Kota</th>
-                            <th rowSpan={2} className="" style={{width:"120px"}}>Parameter</th>
-                            <th className="text-center" colSpan={12}>Tahun ({data.tahun.toString().trim()!=""?data.tahun:"?"})</th>
-                        </tr>
-                        <tr>
-                            {months_year().map((month, idx)=>(
-                                <th key={month} width="300">{month}</th>
-                            ))}
-                        </tr>
-                    </thead>
-                </table>
-            </div>
-        )
-    }
 
     return (
         <>
             <div className="d-flex mb-4">
-                <div style={{width:"200px"}} className="me-2">
-                    <CreatableSelect
-                        options={tahun_options()}
-                        onChange={e=>{
-                            typeFilter({target:{name:"tahun", value:e.value}})
-                        }}
-                        value={tahun_options().find(f=>f.value==data.tahun)}
-                        placeholder="Pilih Tahun"
-                    />
+                <div className="d-flex">
+                    <div style={{width:"200px"}} className="me-2 position-relative">
+                        <CreatableSelect
+                            options={tahun_options()}
+                            onChange={e=>{
+                                typeFilter({target:{name:"tahun", value:e.value}})
+                            }}
+                            value={tahun_options().find(f=>f.value==data.tahun)}
+                            placeholder="Pilih Tahun"
+                        />
+                    </div>
+                    <div style={{width:"200px"}} className="me-2">
+                        <Select
+                            options={pulau_options()}
+                            value={pulau_options().find(f=>f.value==data.pulau)}
+                            onChange={e=>{
+                                typeFilter({target:{name:"pulau", value:e.value}})
+                            }}
+                            placeholder="Semua Pulau"
+                            classNamePrefix="form-select"
+                        />
+                    </div>
+                    <div style={{width:"200px"}} className="me-2">
+                        <Select
+                            options={provinsi_options()}
+                            value={provinsi_options().find(f=>f.value==data.province_id)}
+                            onChange={e=>{
+                                typeFilter({target:{name:"province_id", value:e.value}})
+                            }}
+                            placeholder="Semua Provinsi"
+                            classNamePrefix="form-select"
+                        />
+                    </div>
+                    <div style={{width:"200px"}} className="me-2">
+                        <input
+                            type="text"
+                            className="form-control"
+                            name="q"
+                            onChange={typeFilter}
+                            value={data.q}
+                            placeholder="Cari ..."
+                        />
+                    </div>
                 </div>
-                <div style={{width:"200px"}} className="me-2">
-                    <input
-                        type="text"
-                        className="form-control"
-                        name="q"
-                        onChange={typeFilter}
-                        value={data.q}
-                        placeholder="Cari ..."
-                    />
+                <div className="ms-auto">
+                    <button className="btn btn-primary btn-icon" type="button" title="download">
+                        <FiDownload className="icon"/>
+                    </button>
+                    <button className="btn btn-light btn-icon ms-1" type="button" onClick={e=>setFullScreen(true)} title="full screen">
+                        <FiExternalLink className="icon"/>
+                    </button>
                 </div>
             </div>
             
-            <VirtualTable
-                isLoading={data.is_loading}
-                dataLength={data.data.length}
-                height={600}
-                width="100%"
-                itemCount={data.data.length}
-                itemSize={25*7+75}
-                Inner={Inner}
-                Header={Header}
-                row={Row}
-                minWidth="2000px"
-            />
+            {!full_screen&&
+                <div className="position-relative" style={{height:"600px"}}>
+                    <DataGrid
+                        rows={data_generated()}
+                        columns={columns}
+                        className="rdg-light fill-grid"
+                        rowHeight={25}
+                        headerRowHeight={40}
+                        style={{height:"100%"}}
+                        renderers
+                    />
+                    {data.is_loading&&
+                        <div
+                            className="d-flex align-items-center justify-content-center position-absolute top-0 left-0 w-100 h-100 text-secondary"
+                        >
+                            <Spinner
+                                as="span"
+                                animation="border"
+                                size="sm"
+                                role="status"
+                                aria-hidden="true"
+                                className="me-2"
+                            />
+                            Loading...
+                        </div>
+                    }
+                    {(data.data.length==0&&!data.is_loading)&&
+                        <div
+                            className="d-flex align-items-center justify-content-center position-absolute top-0 left-0 w-100 h-100 text-secondary"
+                        >
+                            Data tidak ditemukan!
+                        </div>
+                    }
+                </div>
+            }
+
+            <Modal show={full_screen} backdrop="static" fullscreen={true} onHide={()=>setFullScreen(false)} animation={false}>
+                <Modal.Header>
+                    <div className="d-flex w-100">
+                        <div className="d-flex">
+                            <div style={{width:"200px"}} className="me-2 position-relative">
+                                <CreatableSelect
+                                    options={tahun_options()}
+                                    onChange={e=>{
+                                        typeFilter({target:{name:"tahun", value:e.value}})
+                                    }}
+                                    value={tahun_options().find(f=>f.value==data.tahun)}
+                                    placeholder="Pilih Tahun"
+                                />
+                            </div>
+                            <div style={{width:"200px"}} className="me-2">
+                                <Select
+                                    options={pulau_options()}
+                                    value={pulau_options().find(f=>f.value==data.pulau)}
+                                    onChange={e=>{
+                                        typeFilter({target:{name:"pulau", value:e.value}})
+                                    }}
+                                    placeholder="Semua Pulau"
+                                    classNamePrefix="form-select"
+                                />
+                            </div>
+                            <div style={{width:"200px"}} className="me-2">
+                                <Select
+                                    options={provinsi_options()}
+                                    value={provinsi_options().find(f=>f.value==data.province_id)}
+                                    onChange={e=>{
+                                        typeFilter({target:{name:"province_id", value:e.value}})
+                                    }}
+                                    placeholder="Semua Provinsi"
+                                    classNamePrefix="form-select"
+                                />
+                            </div>
+                            <div style={{width:"200px"}} className="me-2">
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    name="q"
+                                    onChange={typeFilter}
+                                    value={data.q}
+                                    placeholder="Cari ..."
+                                />
+                            </div>
+                        </div>
+                        <div className="ms-auto">
+                            <button className="btn btn-primary btn-icon" type="button" title="download">
+                                <FiDownload className="icon"/>
+                            </button>
+                            <button className="btn btn-light btn-icon ms-1" type="button" onClick={e=>setFullScreen(false)} title="tutup full screen">
+                                <FiX className="icon"/>
+                            </button>
+                        </div>
+                    </div>
+                </Modal.Header>
+                <Modal.Body className="p-0">
+                    <DataGrid
+                        rows={data_generated()}
+                        columns={columns}
+                        className="rdg-light fill-grid"
+                        rowHeight={25}
+                        headerRowHeight={40}
+                        style={{height:"100%"}}
+                        renderers
+                    />
+                    {data.is_loading&&
+                        <div
+                            className="d-flex align-items-center justify-content-center position-absolute top-0 left-0 w-100 h-100 text-secondary"
+                        >
+                            <Spinner
+                                as="span"
+                                animation="border"
+                                size="sm"
+                                role="status"
+                                aria-hidden="true"
+                                className="me-2"
+                            />
+                            Loading...
+                        </div>
+                    }
+                    {(data.data.length==0&&!data.is_loading)&&
+                        <div
+                            className="d-flex align-items-center justify-content-center position-absolute top-0 left-0 w-100 h-100 text-secondary"
+                        >
+                            Data tidak ditemukan!
+                        </div>
+                    }
+                </Modal.Body>
+                <Modal.Footer className="d-flex justify-content-between align-items-center py-1">
+                    <Modal.Title>Data EWS(Cabai Rawit)</Modal.Title>
+                    <button className="btn btn-light" type="button" onClick={e=>setFullScreen(false)}>
+                        Tutup Full Screen
+                    </button>
+                </Modal.Footer>
+            </Modal>
         </>
     )
 }
@@ -570,7 +1523,15 @@ const ModalEdit=({data, toggleModalEdit, updateEws, request})=>{
 
 
     return (
-        <Modal show={data.is_open} onHide={toggleModalEdit} backdrop="static" size="sm" scrollable>
+        <Modal 
+            show={data.is_open} 
+            onHide={toggleModalEdit} 
+            backdrop="static" 
+            size="sm" 
+            className="modal-nested"
+            backdropClassName="backdrop-nested" 
+            scrollable
+        >
             <Formik
                 initialValues={data.ews}
                 onSubmit={updateEws}
@@ -580,7 +1541,6 @@ const ModalEdit=({data, toggleModalEdit, updateEws, request})=>{
                         type:yup.string().required(),
                         tahun:yup.string().required(),
                         bulan:yup.string().required(),
-                        curah_hujan:yup.string().required(),
                         produksi:yup.string().required()
                     })
                 }
@@ -591,19 +1551,6 @@ const ModalEdit=({data, toggleModalEdit, updateEws, request})=>{
                             <h4 className="modal-title">Edit Ews(Cabai Rawit)</h4>
                         </Modal.Header>
                         <Modal.Body>
-                            <div className="mb-2">
-                                <label className="my-1 me-2">Curah Hujan</label>
-                                <NumberFormat
-                                    className="form-control"
-                                    value={formik.values.curah_hujan}
-                                    onValueChange={values=>{
-                                        const {value}=values
-                                        formik.setFieldValue("curah_hujan", value)
-                                    }}
-                                    suffix=" mm"
-                                    allowNegative={false}
-                                />
-                            </div>
                             <div className="mb-2">
                                 <label className="my-1 me-2">OPT Utama</label>
                                 <AsyncCreatableSelect

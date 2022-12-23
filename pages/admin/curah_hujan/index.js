@@ -25,23 +25,22 @@ import DataGrid from 'react-data-grid'
 
 
 
-class CabaiBesar extends React.Component{
+class CabaiRawit extends React.Component{
     state={
         provinsi_form:[],
         pulau_form:[],
-        ews:{
+        curah_hujan:{
             per_page:"",
             q:"",
-            type:"cabai_besar",
             tahun:"",
             province_id:"",
             pulau:"",
             data:[],
             is_loading:false
         },
-        edit_ews:{
+        edit_curah_hujan:{
             is_open:false,
-            ews:{}
+            curah_hujan:{}
         }
     }
 
@@ -73,27 +72,18 @@ class CabaiBesar extends React.Component{
             })
             .then(res=>res.data)
         },
-        apiGetsEws:async(params)=>{
+        apiGetsCurahHujan:async(params)=>{
             this.abortController.abort()
             this.abortController=new AbortController()
-
-            return await api(access_token()).get("/ews/type/kabupaten_kota", {
+            
+            return await api(access_token()).get("/curah_hujan/type/kabupaten_kota", {
                 params:params,
                 signal:this.abortController.signal
             })
             .then(res=>res.data)
         },
-        apiUpdateEws:async(params)=>{
-            return await api(access_token()).post('/ews', params).then(res=>res.data)
-        },
-        apiGetsOpt:async(params)=>{
-            return await api(access_token()).get("/opt", {
-                params:params
-            })
-            .then(res=>res.data)
-        },
-        apiAddOpt:async(params)=>{
-            return await api(access_token()).post('/opt', params).then(res=>res.data)
+        apiUpdateCurahHujan:async(params)=>{
+            return await api(access_token()).post('/curah_hujan', params).then(res=>res.data)
         }
     }
     //--data
@@ -113,9 +103,9 @@ class CabaiBesar extends React.Component{
         })
     }
     fetchProvinsiForm=async()=>{
-        const {ews}=this.state
+        const {curah_hujan}=this.state
 
-        await this.request.apiGetsProvinsiForm(ews.pulau)
+        await this.request.apiGetsProvinsiForm(curah_hujan.pulau)
         .then(data=>{
             this.setState({
                 provinsi_form:data.data
@@ -129,12 +119,12 @@ class CabaiBesar extends React.Component{
             toast.error("Gets Data Failed!", {position:"bottom-center"})
         })
     }
-    fetchEws=async()=>{
-        const {data, ...params}=this.state.ews
+    fetchCurahHujan=async()=>{
+        const {data, ...params}=this.state.curah_hujan
 
         if(params.tahun.toString().trim()==""){
             this.setState({
-                ews:update(this.state.ews, {
+                curah_hujan:update(this.state.curah_hujan, {
                     data:{$set:[]}
                 })
             })
@@ -142,31 +132,12 @@ class CabaiBesar extends React.Component{
         }
 
         this.setLoading(true)
-        await this.request.apiGetsEws(params)
+        await this.request.apiGetsCurahHujan(params)
         .then(data=>{
             let new_data=[]
             data.data.map(kabkot=>{
-                let ews=[]
                 let curah_hujan=[]
                 this.months_year().map(month=>{
-                    //ews
-                    const find=kabkot.ews.find(f=>f.bulan.toString()==month.toString())
-                    if(!isUndefined(find)){
-                        ews=ews.concat([find])
-                    }
-                    else{
-                        const data_ews={
-                            id_region:kabkot.id_region,
-                            type:params.type,
-                            tahun:params.tahun,
-                            bulan:month,
-                            curah_hujan:"",
-                            opt_utama:[],
-                            produksi:""
-                        }
-                        ews=ews.concat([data_ews])
-                    }
-
                     //curah hujan
                     const find_curah_hujan=kabkot.curah_hujan.find(f=>f.bulan.toString()==month.toString())
                     if(!isUndefined(find_curah_hujan)){
@@ -192,36 +163,40 @@ class CabaiBesar extends React.Component{
                         type:kabkot.provinsi.type,
                         region:kabkot.provinsi.region
                     },
-                    ews:ews,
                     curah_hujan:curah_hujan
                 })
                 new_data=new_data.concat(add_data)
             })
 
             this.setState({
-                ews:update(this.state.ews, {
+                curah_hujan:update(this.state.curah_hujan, {
                     data:{$set:new_data},
                     is_loading:{$set:false}
                 })
             })
         })
         .catch(err=>{
-            if(err.response.status===401){
-                localStorage.removeItem("login_data")
-                Router.push("/login")
+            if(err.name=="CanceledError"){
+                toast.warn("Request Aborted!", {position:"bottom-center"})
             }
-            toast.error("Gets Data Failed!", {position:"bottom-center"})
-            this.setLoading(false)
+            else{
+                if(err.response.status===401){
+                    localStorage.removeItem("login_data")
+                    Router.push("/login")
+                }
+                toast.error("Gets Data Failed!", {position:"bottom-center"})
+                this.setLoading(false)
+            }
         })
     }
-    updateEws=async(values, actions)=>{
-        await this.request.apiUpdateEws(values)
+    updateCurahHujan=async(values, actions)=>{
+        await this.request.apiUpdateCurahHujan(values)
         .then(data=>{
             this.setState({
-                ews:update(this.state.ews, {
+                curah_hujan:update(this.state.curah_hujan, {
                     data:{
                         [values.idx]:{
-                            ews:{
+                            curah_hujan:{
                                 [Number(values.bulan)-1]:{$set:data.data}
                             }
                         }
@@ -254,7 +229,7 @@ class CabaiBesar extends React.Component{
     }
     setLoading=loading=>{
         this.setState({
-            ews:update(this.state.ews, {
+            curah_hujan:update(this.state.curah_hujan, {
                 is_loading:{$set:loading}
             })
         })
@@ -263,7 +238,7 @@ class CabaiBesar extends React.Component{
         const target=e.target
 
         this.setState({
-            ews:update(this.state.ews, {
+            curah_hujan:update(this.state.curah_hujan, {
                 page:{$set:1},
                 [target.name]:{$set:target.value}
             })
@@ -272,21 +247,21 @@ class CabaiBesar extends React.Component{
                 case "q":
                     if(this.timeout) clearTimeout(this.timeout)
                     this.timeout=setTimeout(()=>{
-                        this.fetchEws()
+                        this.fetchCurahHujan()
                     }, 500);
                 break
                 case "tahun":
                 case "province_id":
-                    this.fetchEws()
+                    this.fetchCurahHujan()
                 break
                 case "pulau":
                     this.setState({
-                        ews:update(this.state.ews, {
+                        curah_hujan:update(this.state.curah_hujan, {
                             province_id:{$set:""}
                         })
                     }, ()=>{
                         this.fetchProvinsiForm()
-                        this.fetchEws()
+                        this.fetchCurahHujan()
                     })
                 break
             }
@@ -297,9 +272,9 @@ class CabaiBesar extends React.Component{
     //DATA ACTIONS
     toggleModalEdit=(idx="", list={}, show=false)=>{
         this.setState({
-            edit_ews:{
+            edit_curah_hujan:{
                 is_open:show,
-                ews:show?Object.assign({}, list, {
+                curah_hujan:show?Object.assign({}, list, {
                     idx:idx
                 }):{}
             }
@@ -309,14 +284,14 @@ class CabaiBesar extends React.Component{
 
     //RENDER
     render(){
-        const {ews, edit_ews, provinsi_form, pulau_form}=this.state
+        const {curah_hujan, edit_curah_hujan, provinsi_form, pulau_form}=this.state
 
         return (
             <>
                 <Layout>
                     <div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
                         <div>
-                            <h4 class="mb-3 mb-md-0">Data EWS (Cabai Besar)</h4>
+                            <h4 class="mb-3 mb-md-0">Data Curah Hujan</h4>
                         </div>
                         <div class="d-flex align-items-center flex-wrap text-nowrap">
                         </div>
@@ -326,7 +301,7 @@ class CabaiBesar extends React.Component{
                             <div class="card">
                                 <div class="card-body">
                                     <Table 
-                                        data={ews} 
+                                        data={curah_hujan} 
                                         typeFilter={this.typeFilter}
                                         toggleModalEdit={this.toggleModalEdit}
                                         months_year={this.months_year}
@@ -340,12 +315,11 @@ class CabaiBesar extends React.Component{
                 </Layout>
     
                 <ModalEdit
-                    data={edit_ews}
+                    data={edit_curah_hujan}
                     toggleModalEdit={this.toggleModalEdit}
-                    updateEws={this.updateEws}
+                    updateCurahHujan={this.updateCurahHujan}
                     request={this.request}
                 />
-
             </>
         )
     }
@@ -389,42 +363,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
                 const test=[
                     Object.assign({}, data.data[i], {
                         index:i,
-                        index_table:i*8+0
+                        index_table:i*4+0
                     }),
                     Object.assign({}, data.data[i], {
                         index:i,
-                        index_table:i*8+1
+                        index_table:i*4+1
                     }),
                     Object.assign({}, data.data[i], {
                         index:i,
-                        index_table:i*8+2
+                        index_table:i*4+2
                     }),
                     Object.assign({}, data.data[i], {
                         index:i,
-                        index_table:i*8+3
-                    }),
-                    Object.assign({}, data.data[i], {
-                        index:i,
-                        index_table:i*8+4
-                    }),
-                    Object.assign({}, data.data[i], {
-                        index:i,
-                        index_table:i*8+5
-                    }),
-                    Object.assign({}, data.data[i], {
-                        index:i,
-                        index_table:i*8+6
-                    }),
-                    Object.assign({}, data.data[i], {
-                        index:i,
-                        index_table:i*8+7
+                        index_table:i*4+3
                     })
                 ]
     
                 new_data=new_data.concat(test)
             }
             if(data.data.length>0){
-                new_data=new_data.concat([{index:-1, index_table:data.data.length*8}, {index:-1, index_table:data.length*8+1}])
+                new_data=new_data.concat([{index:-1, index_table:data.data.length*4}, {index:-1, index_table:data.length*4+1}])
             }
         }
         
@@ -432,38 +390,6 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
     }
 
     //helper
-    const valueBanjir=(str_value)=>{
-        const value=str_value.toString().trim()!=""?Number(str_value):""
-        
-        if(value=="") return ""
-
-        if(value<=150){
-            return "Aman"
-        }
-        else if(value>150 && value<=200){
-            return "Waspada"
-        }
-        else if(value>200){
-            return "Rawan"
-        }
-    }
-    const valueKekeringan=(str_value)=>{
-        const value=str_value.toString().trim()!=""?Number(str_value):""
-        
-        if(value=="") return ""
-
-        if(value<60){
-            return "Rawan"
-        }
-        else if(value>=60 && value<75){
-            return "Waspada"
-        }
-        else if(value>=75){
-            return "Aman"
-        }
-
-        return ""
-    }
     const valueSifatHujan=(curah_hujan, normal)=>{
         if(curah_hujan.toString().trim()==""||normal.toString().trim()==""){
             return ""
@@ -492,7 +418,7 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             width: 50,
             frozen: true,
             formatter:({row})=>{
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.index+1}</span>
                 }
                 else{
@@ -507,7 +433,7 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             resizable: true,
             frozen: true,
             formatter:({row})=>{
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.region}</span>
                 }
                 else{
@@ -521,26 +447,14 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             width: 150,
             frozen: true,
             formatter:({row})=>{
-                if(row.index*8+0==row.index_table){
-                    return <span>CH (mm)</span>
+                if(row.index*4+0==row.index_table){
+                    return <span>Curah Hujan</span>
                 }
-                else if(row.index*8+1==row.index_table){
-                    return <span>CH Normal (mm)</span>
+                else if(row.index*4+1==row.index_table){
+                    return <span>CH (Normal)</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>Sifat</span>
-                }
-                else if(row.index*8+3==row.index_table){
-                    return <span>Banjir</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>Kering</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return <span>OPT Utama</span>
-                }
-                else if(row.index*8+6==row.index_table){
-                    return <span>Produksi (ton)</span>
                 }
                 else{
                     return <span></span>
@@ -555,46 +469,22 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             formatter:({row})=>{
                 const row_index=0
     
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*8+1==row.index_table){
+                else if(row.index*4+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*8+3==row.index_table){
-                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return (
-                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
-                            {row.ews[row_index].opt_utama.join("; ")}
-                        </div>
-                    )
-                }
-                else if(row.index*8+6==row.index_table){
-                    return (
-                        <span>
-                            <NumberFormat
-                                displayType="text" 
-                                value={row.ews[row_index].produksi}
-                                thousandSeparator={true}
-                            />
-                        </span>
-                    )
-                }
-                else if(row.index*8+7==row.index_table){
+                else if(row.index*4+3==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
                                 className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
                                 type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
                             >
                                 Edit
                             </button>
@@ -616,46 +506,22 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             formatter:({row})=>{
                 const row_index=1
     
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*8+1==row.index_table){
+                else if(row.index*4+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*8+3==row.index_table){
-                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return (
-                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
-                            {row.ews[row_index].opt_utama.join("; ")}
-                        </div>
-                    )
-                }
-                else if(row.index*8+6==row.index_table){
-                    return (
-                        <span>
-                            <NumberFormat
-                                displayType="text" 
-                                value={row.ews[row_index].produksi}
-                                thousandSeparator={true}
-                            />
-                        </span>
-                    )
-                }
-                else if(row.index*8+7==row.index_table){
+                else if(row.index*4+3==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
                                 className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
                                 type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
                             >
                                 Edit
                             </button>
@@ -677,46 +543,22 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             formatter:({row})=>{
                 const row_index=2
     
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*8+1==row.index_table){
+                else if(row.index*4+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*8+3==row.index_table){
-                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return (
-                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
-                            {row.ews[row_index].opt_utama.join("; ")}
-                        </div>
-                    )
-                }
-                else if(row.index*8+6==row.index_table){
-                    return (
-                        <span>
-                            <NumberFormat
-                                displayType="text" 
-                                value={row.ews[row_index].produksi}
-                                thousandSeparator={true}
-                            />
-                        </span>
-                    )
-                }
-                else if(row.index*8+7==row.index_table){
+                else if(row.index*4+3==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
                                 className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
                                 type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
                             >
                                 Edit
                             </button>
@@ -738,46 +580,22 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             formatter:({row})=>{
                 const row_index=3
     
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*8+1==row.index_table){
+                else if(row.index*4+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*8+3==row.index_table){
-                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return (
-                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
-                            {row.ews[row_index].opt_utama.join("; ")}
-                        </div>
-                    )
-                }
-                else if(row.index*8+6==row.index_table){
-                    return (
-                        <span>
-                            <NumberFormat
-                                displayType="text" 
-                                value={row.ews[row_index].produksi}
-                                thousandSeparator={true}
-                            />
-                        </span>
-                    )
-                }
-                else if(row.index*8+7==row.index_table){
+                else if(row.index*4+3==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
                                 className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
                                 type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
                             >
                                 Edit
                             </button>
@@ -799,46 +617,22 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             formatter:({row})=>{
                 const row_index=4
     
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*8+1==row.index_table){
+                else if(row.index*4+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*8+3==row.index_table){
-                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return (
-                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
-                            {row.ews[row_index].opt_utama.join("; ")}
-                        </div>
-                    )
-                }
-                else if(row.index*8+6==row.index_table){
-                    return (
-                        <span>
-                            <NumberFormat
-                                displayType="text" 
-                                value={row.ews[row_index].produksi}
-                                thousandSeparator={true}
-                            />
-                        </span>
-                    )
-                }
-                else if(row.index*8+7==row.index_table){
+                else if(row.index*4+3==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
                                 className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
                                 type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
                             >
                                 Edit
                             </button>
@@ -860,46 +654,22 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             formatter:({row})=>{
                 const row_index=5
     
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*8+1==row.index_table){
+                else if(row.index*4+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*8+3==row.index_table){
-                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return (
-                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
-                            {row.ews[row_index].opt_utama.join("; ")}
-                        </div>
-                    )
-                }
-                else if(row.index*8+6==row.index_table){
-                    return (
-                        <span>
-                            <NumberFormat
-                                displayType="text" 
-                                value={row.ews[row_index].produksi}
-                                thousandSeparator={true}
-                            />
-                        </span>
-                    )
-                }
-                else if(row.index*8+7==row.index_table){
+                else if(row.index*4+3==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
                                 className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
                                 type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
                             >
                                 Edit
                             </button>
@@ -921,46 +691,22 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             formatter:({row})=>{
                 const row_index=6
     
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*8+1==row.index_table){
+                else if(row.index*4+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*8+3==row.index_table){
-                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return (
-                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
-                            {row.ews[row_index].opt_utama.join("; ")}
-                        </div>
-                    )
-                }
-                else if(row.index*8+6==row.index_table){
-                    return (
-                        <span>
-                            <NumberFormat
-                                displayType="text" 
-                                value={row.ews[row_index].produksi}
-                                thousandSeparator={true}
-                            />
-                        </span>
-                    )
-                }
-                else if(row.index*8+7==row.index_table){
+                else if(row.index*4+3==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
                                 className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
                                 type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
                             >
                                 Edit
                             </button>
@@ -982,46 +728,22 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             formatter:({row})=>{
                 const row_index=7
     
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*8+1==row.index_table){
+                else if(row.index*4+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*8+3==row.index_table){
-                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return (
-                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
-                            {row.ews[row_index].opt_utama.join("; ")}
-                        </div>
-                    )
-                }
-                else if(row.index*8+6==row.index_table){
-                    return (
-                        <span>
-                            <NumberFormat
-                                displayType="text" 
-                                value={row.ews[row_index].produksi}
-                                thousandSeparator={true}
-                            />
-                        </span>
-                    )
-                }
-                else if(row.index*8+7==row.index_table){
+                else if(row.index*4+3==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
                                 className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
                                 type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
                             >
                                 Edit
                             </button>
@@ -1043,46 +765,22 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             formatter:({row})=>{
                 const row_index=8
     
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*8+1==row.index_table){
+                else if(row.index*4+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*8+3==row.index_table){
-                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return (
-                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
-                            {row.ews[row_index].opt_utama.join("; ")}
-                        </div>
-                    )
-                }
-                else if(row.index*8+6==row.index_table){
-                    return (
-                        <span>
-                            <NumberFormat
-                                displayType="text" 
-                                value={row.ews[row_index].produksi}
-                                thousandSeparator={true}
-                            />
-                        </span>
-                    )
-                }
-                else if(row.index*8+7==row.index_table){
+                else if(row.index*4+3==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
                                 className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
                                 type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
                             >
                                 Edit
                             </button>
@@ -1104,46 +802,22 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             formatter:({row})=>{
                 const row_index=9
     
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*8+1==row.index_table){
+                else if(row.index*4+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*8+3==row.index_table){
-                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return (
-                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
-                            {row.ews[row_index].opt_utama.join("; ")}
-                        </div>
-                    )
-                }
-                else if(row.index*8+6==row.index_table){
-                    return (
-                        <span>
-                            <NumberFormat
-                                displayType="text" 
-                                value={row.ews[row_index].produksi}
-                                thousandSeparator={true}
-                            />
-                        </span>
-                    )
-                }
-                else if(row.index*8+7==row.index_table){
+                else if(row.index*4+3==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
                                 className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
                                 type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
                             >
                                 Edit
                             </button>
@@ -1165,46 +839,22 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             formatter:({row})=>{
                 const row_index=10
     
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*8+1==row.index_table){
+                else if(row.index*4+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*8+3==row.index_table){
-                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return (
-                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
-                            {row.ews[row_index].opt_utama.join("; ")}
-                        </div>
-                    )
-                }
-                else if(row.index*8+6==row.index_table){
-                    return (
-                        <span>
-                            <NumberFormat
-                                displayType="text" 
-                                value={row.ews[row_index].produksi}
-                                thousandSeparator={true}
-                            />
-                        </span>
-                    )
-                }
-                else if(row.index*8+7==row.index_table){
+                else if(row.index*4+3==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
                                 className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
                                 type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
                             >
                                 Edit
                             </button>
@@ -1226,46 +876,22 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             formatter:({row})=>{
                 const row_index=11
     
-                if(row.index*8+0==row.index_table){
+                if(row.index*4+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*8+1==row.index_table){
+                else if(row.index*4+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*8+2==row.index_table){
+                else if(row.index*4+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*8+3==row.index_table){
-                    return <span>{valueBanjir(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+4==row.index_table){
-                    return <span>{valueKekeringan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*8+5==row.index_table){
-                    return (
-                        <div className="text-truncate" title={row.ews[row_index].opt_utama.join("; ")}>
-                            {row.ews[row_index].opt_utama.join("; ")}
-                        </div>
-                    )
-                }
-                else if(row.index*8+6==row.index_table){
-                    return (
-                        <span>
-                            <NumberFormat
-                                displayType="text" 
-                                value={row.ews[row_index].produksi}
-                                thousandSeparator={true}
-                            />
-                        </span>
-                    )
-                }
-                else if(row.index*8+7==row.index_table){
+                else if(row.index*4+3==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
                                 className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
                                 type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.ews[row_index], true)}
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
                             >
                                 Edit
                             </button>
@@ -1435,7 +1061,7 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
                             <button className="btn btn-primary btn-icon" type="button" title="download">
                                 <FiDownload className="icon"/>
                             </button>
-                            <button className="btn btn-light btn-icon ms-1" type="button" onClick={e=>setFullScreen(false)} title="tutup full screen">
+                            <button className="btn btn-light btn-icon ms-1" type="button" onClick={e=>setFullScreen(false)} title="full screen">
                                 <FiX className="icon"/>
                             </button>
                         </div>
@@ -1475,7 +1101,7 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
                     }
                 </Modal.Body>
                 <Modal.Footer className="d-flex justify-content-between align-items-center py-1">
-                    <Modal.Title>Data EWS(Cabai Besar)</Modal.Title>
+                    <Modal.Title>Data Curah Hujan</Modal.Title>
                     <button className="btn btn-light" type="button" onClick={e=>setFullScreen(false)}>
                         Tutup Full Screen
                     </button>
@@ -1485,42 +1111,7 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
     )
 }
 
-const ModalEdit=({data, toggleModalEdit, updateEws, request})=>{
-
-    const [options_opt, setOptionsOpt]=useState([])
-
-    //--data
-    const fetchSearchOpt=async(str_value, callback)=>{
-        const params={
-            per_page:15,
-            q:str_value
-        }
-        await request.apiGetsOpt(params)
-        .then(data=>{
-            const options=data.data.map(opt=>{
-                return {label:opt.opt, value:opt.opt}
-            })
-            setOptionsOpt(options)
-            callback(options)
-        })
-        .catch(err=>false)
-    }
-    const addSearchedOpt=async(str_value)=>{
-        const params={
-            opt:str_value
-        }
-        await request.apiAddOpt(params)
-        .then(res=>true)
-        .catch(err=>false)
-    }
-
-    //helper
-    const valuesOpt=(data)=>{
-        return data.map(d=>{
-            return {label:d, value:d}
-        })
-    }
-
+const ModalEdit=({data, toggleModalEdit, updateCurahHujan, request})=>{
 
     return (
         <Modal 
@@ -1533,54 +1124,49 @@ const ModalEdit=({data, toggleModalEdit, updateEws, request})=>{
             scrollable
         >
             <Formik
-                initialValues={data.ews}
-                onSubmit={updateEws}
+                initialValues={data.curah_hujan}
+                onSubmit={updateCurahHujan}
                 validationSchema={
                     yup.object().shape({
                         id_region:yup.string().required(),
-                        type:yup.string().required(),
                         tahun:yup.string().required(),
                         bulan:yup.string().required(),
-                        produksi:yup.string().required()
+                        curah_hujan:yup.number().required(),
+                        curah_hujan_normal:yup.number().required()
                     })
                 }
             >
                 {formik=>(
                     <form onSubmit={formik.handleSubmit}>
                         <Modal.Header closeButton>
-                            <h4 className="modal-title">Edit Ews(Cabai Besar)</h4>
+                            <h4 className="modal-title">Edit Curah Hujan</h4>
                         </Modal.Header>
                         <Modal.Body>
                             <div className="mb-2">
-                                <label className="my-1 me-2">OPT Utama</label>
-                                <AsyncCreatableSelect
-                                    isMulti={true}
-                                    defaultOptions={options_opt}
-                                    loadOptions={fetchSearchOpt}
-                                    onCreateOption={(str_value)=>{
-                                        formik.setFieldValue("opt_utama", formik.values.opt_utama.concat([str_value]))
-                                        addSearchedOpt(str_value)
-                                    }}
-                                    onChange={e=>{
-                                        const new_value=e.map(v=>v.value)
-                                        formik.setFieldValue("opt_utama", new_value)
-                                    }}
-                                    value={valuesOpt(formik.values.opt_utama)}
-                                    menuPortalTarget={document.body}
-                                    styles={{menuPortal:(base)=>({...base, zIndex:9999})}}
-                                />
-                            </div>
-                            <div className="mb-2">
-                                <label className="my-1 me-2">Produksi (Ton)</label>
+                                <label className="my-1 me-2">Curah Hujan</label>
                                 <NumberFormat
                                     className="form-control"
                                     thousandSeparator
-                                    value={formik.values.produksi}
+                                    value={formik.values.curah_hujan}
                                     onValueChange={values=>{
                                         const {value}=values
-                                        formik.setFieldValue("produksi", value)
+                                        formik.setFieldValue("curah_hujan", value)
                                     }}
-                                    suffix=" Ton"
+                                    suffix=" mm"
+                                    allowNegative={false}
+                                />
+                            </div>
+                            <div className="mb-2">
+                                <label className="my-1 me-2">Curah Hujan Normal</label>
+                                <NumberFormat
+                                    className="form-control"
+                                    thousandSeparator
+                                    value={formik.values.curah_hujan_normal}
+                                    onValueChange={values=>{
+                                        const {value}=values
+                                        formik.setFieldValue("curah_hujan_normal", value)
+                                    }}
+                                    suffix=" mm"
                                     allowNegative={false}
                                 />
                             </div>
@@ -1609,4 +1195,4 @@ const ModalEdit=({data, toggleModalEdit, updateEws, request})=>{
 }
 
 
-export default withAuth(CabaiBesar)
+export default withAuth(CabaiRawit)

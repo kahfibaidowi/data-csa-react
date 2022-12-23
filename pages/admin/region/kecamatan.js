@@ -69,7 +69,8 @@ class Kecamatan extends React.Component{
                 params:{
                     per_page:"",
                     page:1,
-                    q:""
+                    q:"",
+                    pulau:""
                 },
             })
             .then(res=>res.data)
@@ -112,7 +113,7 @@ class Kecamatan extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Gets Data Failed!", {position:"bottom-center"})
         })
@@ -136,7 +137,7 @@ class Kecamatan extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Gets Data Failed!", {position:"bottom-center"})
         })
@@ -159,7 +160,7 @@ class Kecamatan extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Gets Data Failed!", {position:"bottom-center"})
             this.setLoading(false)
@@ -174,7 +175,7 @@ class Kecamatan extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             
             if(err.response.data?.error=="VALIDATION_ERROR")
@@ -192,7 +193,7 @@ class Kecamatan extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             
             if(err.response.data?.error=="VALIDATION_ERROR")
@@ -209,7 +210,7 @@ class Kecamatan extends React.Component{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Remove Data Failed!", {position:"bottom-center"})
         })
@@ -604,7 +605,7 @@ const ModalTambah=({data, provinsi_form, regency_form, toggleModalTambah, addReg
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Gets Data Failed!", {position:"bottom-center"})
         })
@@ -827,7 +828,7 @@ const ModalEdit=({data, provinsi_form, toggleModalEdit, updateRegion, request})=
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                Router.push("/login")
             }
             toast.error("Gets Data Failed!", {position:"bottom-center"})
         })

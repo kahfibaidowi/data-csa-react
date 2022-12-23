@@ -3,7 +3,7 @@ import Link from "next/link"
 import Router, { useRouter } from "next/router"
 import React, { useEffect, useState } from "react"
 import { Collapse, Dropdown } from "react-bootstrap"
-import {FiChevronDown, FiCloudRain, FiEdit, FiHome, FiLogOut, FiMail, FiMapPin, FiMenu, FiUser} from "react-icons/fi"
+import {FiChevronDown, FiCloudRain, FiEdit, FiEye, FiHelpCircle, FiHome, FiLogOut, FiMail, FiMapPin, FiMenu, FiTruck, FiUser} from "react-icons/fi"
 import {api} from "../config/api"
 import { access_token, login_data as user_data } from "../config/config"
 import Avatar from "./ui/avatar"
@@ -115,6 +115,28 @@ const Layout=(props)=>{
                         </li>
                         <li 
                             className={classNames(
+                                "nav-item", 
+                                {"active":active_page=="/admin/curah_hujan"}
+                            )}
+                        >
+                            <Link href="/admin/curah_hujan" className="nav-link">
+                                <FiCloudRain className="link-icon"/>
+                                <span className="link-title">Input Curah Hujan</span>
+                            </Link>
+                        </li>
+                        <li 
+                            className={classNames(
+                                "nav-item", 
+                                {"active":active_page=="/admin/prediksi_opt"}
+                            )}
+                        >
+                            <Link href="/admin" className="nav-link">
+                                <FiHelpCircle className="link-icon"/>
+                                <span className="link-title">Prediksi OPT</span>
+                            </Link>
+                        </li>
+                        <li 
+                            className={classNames(
                                 "nav-item",
                                 {"active":["/admin/ews/bawang_merah"].includes(active_page)}
                             )}
@@ -124,8 +146,8 @@ const Layout=(props)=>{
                                 onClick={e=>setCollapse(collapse=="ews"?"":"ews")} 
                                 aria-expanded={collapse=="ews"}
                             >
-                                <FiCloudRain className="link-icon"/>
-                                <span className="link-title">Data EWS</span>
+                                <FiTruck className="link-icon"/>
+                                <span className="link-title">Rekap EWS</span>
                                 <FiChevronDown className="link-arrow"/>
                             </a>
                             <Collapse in={collapse=="ews"}>
@@ -159,64 +181,68 @@ const Layout=(props)=>{
                                 </div>
                             </Collapse>
                         </li>
-                        <li className="nav-item nav-category">Master Data</li>
-                        <li 
-                            className={classNames(
-                                "nav-item",
-                                {"active":["/admin/region/provinsi", "/admin/region/kabupaten_kota", "/admin/region/kecamatan"].includes(active_page)}
-                            )}
-                        >
-                            <a 
-                                className="nav-link cursor-pointer" 
-                                onClick={e=>setCollapse(collapse=="region"?"":"region")} 
-                                aria-expanded={collapse=="region"}
-                            >
-                                <FiMapPin className="link-icon"/>
-                                <span className="link-title">Region/Wilayah</span>
-                                <FiChevronDown className="link-arrow"/>
-                            </a>
-                            <Collapse in={collapse=="region"}>
-                                <div>
-                                    <ul className="nav sub-menu">
-                                        <li className="nav-item">
-                                            <Link 
-                                                href="/admin/region/provinsi" 
-                                                className={classNames("nav-link", {"active":active_page=="/admin/region/provinsi"})}
-                                            >
-                                                Provinsi
-                                            </Link>
-                                        </li>
-                                        <li className="nav-item">
-                                            <Link 
-                                                href="/admin/region/kabupaten_kota" 
-                                                className={classNames("nav-link", {"active":active_page=="/admin/region/kabupaten_kota"})}
-                                            >
-                                                Kabupaten/Kota
-                                            </Link>
-                                        </li>
-                                        <li className="nav-item">
-                                            <Link 
-                                                href="/admin/region/kecamatan" 
-                                                className={classNames("nav-link", {"active":active_page=="/admin/region/kecamatan"})}
-                                            >
-                                                Kecamatan
-                                            </Link>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </Collapse>
-                        </li>
-                        <li 
-                            className={classNames(
-                                "nav-item",
-                                {"active":active_page=="/admin/users"}
-                            )}
-                        >
-                            <Link href="/admin/users" className="nav-link">
-                                <FiUser className="link-icon"/>
-                                <span className="link-title">Users</span>
-                            </Link>
-                        </li>
+                        {login_data.role=="admin"&&
+                            <>
+                                <li className="nav-item nav-category">Master Data</li>
+                                    <li 
+                                        className={classNames(
+                                            "nav-item",
+                                            {"active":["/admin/region/provinsi", "/admin/region/kabupaten_kota", "/admin/region/kecamatan"].includes(active_page)}
+                                        )}
+                                    >
+                                        <a 
+                                            className="nav-link cursor-pointer" 
+                                            onClick={e=>setCollapse(collapse=="region"?"":"region")} 
+                                            aria-expanded={collapse=="region"}
+                                        >
+                                            <FiMapPin className="link-icon"/>
+                                            <span className="link-title">Region/Wilayah</span>
+                                            <FiChevronDown className="link-arrow"/>
+                                        </a>
+                                        <Collapse in={collapse=="region"}>
+                                            <div>
+                                                <ul className="nav sub-menu">
+                                                    <li className="nav-item">
+                                                        <Link 
+                                                            href="/admin/region/provinsi" 
+                                                            className={classNames("nav-link", {"active":active_page=="/admin/region/provinsi"})}
+                                                        >
+                                                            Provinsi
+                                                        </Link>
+                                                    </li>
+                                                    <li className="nav-item">
+                                                        <Link 
+                                                            href="/admin/region/kabupaten_kota" 
+                                                            className={classNames("nav-link", {"active":active_page=="/admin/region/kabupaten_kota"})}
+                                                        >
+                                                            Kabupaten/Kota
+                                                        </Link>
+                                                    </li>
+                                                    <li className="nav-item">
+                                                        <Link 
+                                                            href="/admin/region/kecamatan" 
+                                                            className={classNames("nav-link", {"active":active_page=="/admin/region/kecamatan"})}
+                                                        >
+                                                            Kecamatan
+                                                        </Link>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </Collapse>
+                                    </li>
+                                    <li 
+                                        className={classNames(
+                                            "nav-item",
+                                            {"active":active_page=="/admin/users"}
+                                        )}
+                                    >
+                                        <Link href="/admin/users" className="nav-link">
+                                            <FiUser className="link-icon"/>
+                                            <span className="link-title">Users</span>
+                                        </Link>
+                                    </li>
+                            </>
+                        }
                     </ul>
                 <div className="ps__rail-x" style={{left:0,bottom:0}}><div className="ps__thumb-x" tabindex="0" style={{left:0,width:0}}></div></div><div className="ps__rail-y" style={{top:0,right:0}}><div className="ps__thumb-y" tabindex="0" style={{top:0,height:0}}></div></div></div>
             </nav>
