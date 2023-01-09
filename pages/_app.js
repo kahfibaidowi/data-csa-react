@@ -2,6 +2,7 @@ import "../styles/light/style.min.css"
 import 'react-bootstrap-typeahead/css/Typeahead.css'
 import 'react-toastify/dist/ReactToastify.css'
 import 'react-data-grid/lib/styles.css'
+// import 'mapbox-gl/dist/mapbox-gl.css'
 import 'leaflet/dist/leaflet.css'
 import "../styles/globals.css"
 

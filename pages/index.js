@@ -17,6 +17,7 @@ const Map=dynamic(()=>import("../component/modules/frontpage/map"), {ssr:false})
 class Frontpage extends React.Component{
     state={
         tahun:"",
+        provinsi_form:[],
         summary_ews_produksi:{
             bawang_merah:0,
             cabai_besar:0,
@@ -35,13 +36,14 @@ class Frontpage extends React.Component{
         }, ()=>{
             this.fetchSummaryEwsProduksi()
             this.fetchSummarySifatHujanKabupatenKota()
+            this.fetchProvinsiForm()
         })
     }
     
     //REQUEST, QUERY, MUTATION
     request={
         apiGetSummaryEwsProduksi:async(tahun)=>{
-            return await api().get("/frontpage/summary_ews_produksi", {
+            return await api().get("/frontpage/summary/type/ews_produksi", {
                 params:{
                     tahun:tahun
                 }
@@ -49,11 +51,15 @@ class Frontpage extends React.Component{
             .then(res=>res.data)
         },
         apiGetSummarySifatHujanKabupatenKota:async(tahun)=>{
-            return await api().get("/frontpage/summary_sifat_hujan_kabupaten_kota", {
+            return await api().get("/frontpage/summary/type/sifat_hujan_kabupaten_kota", {
                 params:{
                     tahun:tahun
                 }
             })
+            .then(res=>res.data)
+        },
+        apiGetProvinsiForm:async()=>{
+            return await api().get("/frontpage/region/type/provinsi")
             .then(res=>res.data)
         }
     }
@@ -100,6 +106,7 @@ class Frontpage extends React.Component{
 
                 return {
                     region:d.region,
+                    provinsi:d.parent,
                     data:db,
                     rgb:random_rgba()
                 }
@@ -120,17 +127,38 @@ class Frontpage extends React.Component{
 
                 return {
                     region:d.region,
+                    provinsi:d.parent,
                     data:db,
                     rgb:random_rgba()
                 }
             })
             //map
             const geo_features=data.data.map(d=>{
+                //curah hujan
+                let curah_hujan=[]
+                this.months_year().map(month=>{
+                    const find_curah_hujan=d.curah_hujan.find(f=>f.bulan.toString()==month.toString())
+                    if(!isUndefined(find_curah_hujan)){
+                        curah_hujan=curah_hujan.concat([find_curah_hujan])
+                    }
+                    else{
+                        const data_curah_hujan={
+                            id_region:d.id_region,
+                            tahun:tahun,
+                            bulan:month,
+                            curah_hujan:"",
+                            curah_hujan_normal:"",
+                            sifat:""
+                        }
+                        curah_hujan=curah_hujan.concat([data_curah_hujan])
+                    }
+                })
+
                 return {
                     type:"Feature",
                     properties:{
                         region:d.region,
-                        curah_hujan:d.curah_hujan
+                        curah_hujan:curah_hujan
                     },
                     geometry:!isUndefined(d.geo_json.graph)?d.geo_json.graph:{type:"MultiPolygon", coordinates:[]}
                 }
@@ -140,6 +168,17 @@ class Frontpage extends React.Component{
                 banjir:banjir,
                 kekeringan:kekeringan,
                 map_curah_hujan:geo_features
+            })
+        })
+        .catch(err=>{
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
+    fetchProvinsiForm=async()=>{
+        await this.request.apiGetProvinsiForm()
+        .then(data=>{
+            this.setState({
+                provinsi_form:data.data
             })
         })
         .catch(err=>{
@@ -204,7 +243,7 @@ class Frontpage extends React.Component{
         this.setState({
             tahun:e.value
         }, ()=>{
-            if(tahun.toString()!=""){
+            if(this.state.tahun.toString()!=""){
                 this.fetchSummaryEwsProduksi()
                 this.fetchSummarySifatHujanKabupatenKota()
             }
@@ -212,7 +251,7 @@ class Frontpage extends React.Component{
     }
 
     render(){
-        const {tahun, summary_ews_produksi, banjir, kekeringan, map_curah_hujan}=this.state
+        const {tahun, summary_ews_produksi, banjir, kekeringan, map_curah_hujan, provinsi_form}=this.state
 
         return (
             <>
@@ -221,7 +260,8 @@ class Frontpage extends React.Component{
                     style={{
                         left:0,
                         top:0,
-                        width:"100%"
+                        width:"100%",
+                        zIndex:99999999
                     }}
                 >
                     <div className="container">
@@ -316,20 +356,19 @@ class Frontpage extends React.Component{
                                 </div>
                             </div>
                         </div>
-                        {/* <div className="row mt-4">
+                        <div className="row mt-4 mb-5">
                             <div className="col-12">
                                 <div class="card">
                                     <div class="card-body">
-                                        <h6 class="card-title mb-5">Pemetaan Sifat Hujan</h6>
-                                        <div className="d-flex">
-                                            <Map 
-                                                data={map_curah_hujan} 
-                                            />
-                                        </div>
+                                        <h6 class="card-title mb-2">Pemetaan Sifat Hujan</h6>
+                                        <Map 
+                                            data={map_curah_hujan} 
+                                            className="map-responsive-full"
+                                        />
                                     </div>
                                 </div>
                             </div>
-                        </div> */}
+                        </div>
                         <div className="row mt-4">
                             <div className="col-12">
                                 <div class="card">
@@ -339,6 +378,7 @@ class Frontpage extends React.Component{
                                             <Chart
                                                 data={banjir}
                                                 labels={["Aman", "Waspada", "Rawan", ""]}
+                                                provinsi_form={provinsi_form}
                                             />
                                         </div>
                                     </div>
@@ -354,6 +394,7 @@ class Frontpage extends React.Component{
                                             <Chart
                                                 data={kekeringan}
                                                 labels={["Aman", "Waspada", "Rawan", ""]}
+                                                provinsi_form={provinsi_form}
                                             />
                                         </div>
                                     </div>

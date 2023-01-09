@@ -111,5 +111,6 @@ thead.no-display{
     }
     .map-responsive-full{
         height:600px;
+        width: 100%;
     }
 }

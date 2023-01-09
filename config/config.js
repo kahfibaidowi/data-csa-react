@@ -31,6 +31,9 @@ export const access_token=()=>{
     }
 }
 
+//mapbox
+export const mapbox_access_token="pk.eyJ1IjoiZGFybWF3YW4xNCIsImEiOiJjbGNjcGwxaHo0YWh3M3dtbnF5bHV5aHRkIn0.0YIhpyNutx_k_B_5AteECw"
+
 //helper
 export const useStateCallback=(initialState)=>{
     const [state, setState]=useState(initialState)

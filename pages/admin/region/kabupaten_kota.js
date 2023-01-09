@@ -383,7 +383,7 @@ const Table=({data, provinsi_form, setPerPage, goToPage, typeFilter, toggleConfi
                 </div>
             </div>
             <div className="table-responsive mt-3">
-                <table className="table table-custom table-wrap mb-0">
+                <table className="table table-hover table-custom table-wrap mb-0">
                     <thead className="thead-light">
                         <tr>
                             <th className="" width="50">#</th>
