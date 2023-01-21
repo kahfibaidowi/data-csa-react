@@ -31,6 +31,50 @@ export const access_token=()=>{
     }
 }
 
+//theme
+export const get_theme=()=>{
+    const theme=localStorage.getItem("preferences.theme")
+
+    if(theme!==null){
+        return theme
+    }
+    else{
+        return "light"
+    }
+}
+export const get_sidebar=()=>{
+    const theme=localStorage.getItem("preferences.sidebar")
+
+    if(theme!==null){
+        return theme
+    }
+    else{
+        return "dark"
+    }
+}
+export const get_sidebar_collapsed=()=>{
+    const theme=localStorage.getItem("preferences.sidebar_collapsed")
+
+    if(theme!==null){
+        return JSON.parse(theme)
+    }
+    else{
+        return {
+            is_open:false,
+            is_folded:false
+        }
+    }
+}
+export const set_theme=(theme)=>{
+    localStorage.setItem("preferences.theme", theme)
+}
+export const set_sidebar=(theme)=>{
+    localStorage.setItem("preferences.sidebar", theme)
+}
+export const set_sidebar_collapsed=(theme)=>{
+    localStorage.setItem("preferences.sidebar_collapsed", JSON.stringify(theme))
+}
+
 //mapbox
 export const mapbox_access_token="pk.eyJ1IjoiZGFybWF3YW4xNCIsImEiOiJjbGNjcGwxaHo0YWh3M3dtbnF5bHV5aHRkIn0.0YIhpyNutx_k_B_5AteECw"
 

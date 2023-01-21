@@ -3,21 +3,20 @@ import Link from "next/link"
 import Router, { useRouter } from "next/router"
 import React, { useEffect, useState } from "react"
 import { Collapse, Dropdown } from "react-bootstrap"
-import {FiChevronDown, FiCloudRain, FiEdit, FiEye, FiHelpCircle, FiHome, FiLogOut, FiMail, FiMapPin, FiMenu, FiTruck, FiUser} from "react-icons/fi"
+import {FiChevronDown, FiCloudRain, FiEdit, FiEye, FiHelpCircle, FiHome, FiLogOut, FiMail, FiMapPin, FiMenu, FiSettings, FiTruck, FiUser} from "react-icons/fi"
 import {api} from "../config/api"
 import { access_token, login_data as user_data } from "../config/config"
 import Avatar from "./ui/avatar"
+import { useTheme } from "../store/theme"
 
 const Layout=(props)=>{
     const [login_data, setLoginData]=useState({})
     const [collapse, setCollapse]=useState("")
-    const [sidebar_toggler, setSidebarToggler]=useState({
-        is_open:false,
-        is_folded:false
-    })
+    const [show_setting, setShowSetting]=useState(false)
     const [sidebar_mobile_toggler, setSidebarMobileToggler]=useState(false)
     const [active_page, setActivePage]=useState("")
     const router=useRouter()
+    const theme_store=useTheme()
 
     useEffect(()=>{
         setLoginData(user_data()!=null?user_data():{})
@@ -34,8 +33,8 @@ const Layout=(props)=>{
 
     //sidebar toggler
     const toggleSidebar=()=>{
-        if(sidebar_toggler.is_open){
-            setSidebarToggler({
+        if(theme_store.sidebar_collapsed.is_open){
+            theme_store.setSidebarCollapsed({
                 is_open:false,
                 is_folded:false
             })
@@ -43,7 +42,7 @@ const Layout=(props)=>{
         }
         else{
             if(!sidebar_mobile_toggler){
-                setSidebarToggler({
+                theme_store.setSidebarCollapsed({
                     is_open:true,
                     is_folded:false
                 })
@@ -52,8 +51,8 @@ const Layout=(props)=>{
         }
     }
     const toggleSidebarFolded=value=>{
-        if(sidebar_toggler.is_open){
-            setSidebarToggler({
+        if(theme_store.sidebar_collapsed.is_open){
+            theme_store.setSidebarCollapsed({
                 is_open:true,
                 is_folded:value
             })
@@ -75,9 +74,10 @@ const Layout=(props)=>{
     return (
         <div 
             className={classNames(
-                "main-wrapper sidebar-dark", 
-                {"sidebar-folded":sidebar_toggler.is_open}, 
-                {"open-sidebar-folded overflow-hidden":sidebar_toggler.is_folded},
+                "main-wrapper", 
+                {"sidebar-dark":theme_store.sidebar=="dark"},
+                {"sidebar-folded":theme_store.sidebar_collapsed.is_open}, 
+                {"open-sidebar-folded overflow-hidden":theme_store.sidebar_collapsed.is_folded},
                 {"sidebar-open":sidebar_mobile_toggler}
             )}
         >
@@ -89,8 +89,8 @@ const Layout=(props)=>{
                     <div 
                         className={classNames(
                             "sidebar-toggler", 
-                            {"active":sidebar_toggler.is_open||sidebar_mobile_toggler}, 
-                            {"not-active":!sidebar_toggler.is_open&&!sidebar_mobile_toggler}
+                            {"active":theme_store.sidebar_collapsed.is_open||sidebar_mobile_toggler}, 
+                            {"not-active":!theme_store.sidebar_collapsed.is_open&&!sidebar_mobile_toggler}
                         )} 
                         onClick={e=>toggleSidebar()}
                     >
@@ -245,6 +245,66 @@ const Layout=(props)=>{
                         }
                     </ul>
                 <div className="ps__rail-x" style={{left:0,bottom:0}}><div className="ps__thumb-x" tabindex="0" style={{left:0,width:0}}></div></div><div className="ps__rail-y" style={{top:0,right:0}}><div className="ps__thumb-y" tabindex="0" style={{top:0,height:0}}></div></div></div>
+            </nav>
+            <nav 
+                class="settings-sidebar"
+                style={{
+                    right:show_setting?"0":"-232px"
+                }}
+            >
+                <div class="sidebar-body">
+                    <a 
+                        href="#" 
+                        class="settings-sidebar-toggler" 
+                        onClick={e=>{
+                            e.preventDefault()
+                            setShowSetting(!show_setting)
+                        }}
+                    >
+                        <FiSettings/>
+                    </a>
+                    <h6 class="text-muted mb-2">Sidebar:</h6>
+                    <div class="mb-3 pb-3 border-bottom">
+                        <div class="form-check form-check-inline">
+                            <input 
+                                type="radio" 
+                                class="form-check-input" 
+                                name="sidebarThemeSettings" 
+                                id="sidebarLight" 
+                                value="sidebar-light" 
+                                checked={theme_store.sidebar=="light"?true:false}
+                                onChange={e=>theme_store.setSidebar("light")}
+                            />
+                            <label class="form-check-label" for="sidebarLight">
+                            Light
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input 
+                                type="radio" 
+                                class="form-check-input" 
+                                name="sidebarThemeSettings" 
+                                id="sidebarDark" 
+                                value="sidebar-dark"
+                                checked={theme_store.sidebar=="dark"?true:false}
+                                onChange={e=>theme_store.setSidebar("dark")}
+                            />
+                            <label class="form-check-label" for="sidebarDark">
+                                Dark
+                            </label>
+                        </div>
+                    </div>
+                    <div class="theme-wrapper">
+                        <h6 class="text-muted mb-2">Light Theme:</h6>
+                        <button 
+                            class={classNames("theme-item", {"active":theme_store.theme=="light"})}
+                            type="button"
+                            onClick={e=>theme_store.setTheme("light")}
+                        >
+                            <img src="/images/light.jpg" alt="light theme"/>
+                        </button>
+                    </div>
+                </div>
             </nav>
 
             <div className="page-wrapper">

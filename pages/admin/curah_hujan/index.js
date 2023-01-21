@@ -24,15 +24,16 @@ import BaseTable, {AutoResizer, Column} from "react-base-table"
 import DataGrid from 'react-data-grid'
 
 
-
-class CabaiRawit extends React.Component{
+class CurahHujan extends React.Component{
     state={
+        kabupaten_kota_form:[],
         provinsi_form:[],
         pulau_form:[],
         curah_hujan:{
             per_page:"",
             q:"",
             tahun:"",
+            regency_id:"",
             province_id:"",
             pulau:"",
             data:[],
@@ -72,11 +73,22 @@ class CabaiRawit extends React.Component{
             })
             .then(res=>res.data)
         },
+        apiGetsKabupatenKotaForm:async(provinsi)=>{
+            return await api(access_token()).get("/region/type/kabupaten_kota", {
+                params:{
+                    per_page:"",
+                    page:1,
+                    q:"",
+                    province_id:provinsi
+                },
+            })
+            .then(res=>res.data)
+        },
         apiGetsCurahHujan:async(params)=>{
             this.abortController.abort()
             this.abortController=new AbortController()
             
-            return await api(access_token()).get("/curah_hujan/type/kabupaten_kota", {
+            return await api(access_token()).get("/curah_hujan/type/kecamatan", {
                 params:params,
                 signal:this.abortController.signal
             })
@@ -119,6 +131,23 @@ class CabaiRawit extends React.Component{
             toast.error("Gets Data Failed!", {position:"bottom-center"})
         })
     }
+    fetchKabupatenKotaForm=async()=>{
+        const {curah_hujan}=this.state
+
+        await this.request.apiGetsKabupatenKotaForm(curah_hujan.province_id)
+        .then(data=>{
+            this.setState({
+                kabupaten_kota_form:data.data
+            })
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
     fetchCurahHujan=async()=>{
         const {data, ...params}=this.state.curah_hujan
 
@@ -135,33 +164,42 @@ class CabaiRawit extends React.Component{
         await this.request.apiGetsCurahHujan(params)
         .then(data=>{
             let new_data=[]
-            data.data.map(kabkot=>{
+            data.data.map(kec=>{
                 let curah_hujan=[]
                 this.months_year().map(month=>{
                     //curah hujan
-                    const find_curah_hujan=kabkot.curah_hujan.find(f=>f.bulan.toString()==month.toString())
-                    if(!isUndefined(find_curah_hujan)){
-                        curah_hujan=curah_hujan.concat([find_curah_hujan])
-                    }
-                    else{
-                        const data_curah_hujan={
-                            id_region:kabkot.id_region,
-                            tahun:params.tahun,
-                            bulan:month,
-                            curah_hujan:"",
-                            curah_hujan_normal:"",
-                            sifat:""
+                    for(var i=1; i<=3; i++){
+                        const find_curah_hujan=kec.curah_hujan.find(f=>(f.bulan.toString()==month.toString()&&f.input_ke.toString()==i.toString()))
+                        if(!isUndefined(find_curah_hujan)){
+                            curah_hujan=curah_hujan.concat([find_curah_hujan])
                         }
-                        curah_hujan=curah_hujan.concat([data_curah_hujan])
+                        else{
+                            const data_curah_hujan={
+                                id_region:kec.id_region,
+                                tahun:params.tahun,
+                                bulan:month,
+                                input_ke:i,
+                                curah_hujan:"",
+                                curah_hujan_normal:"",
+                                sifat:""
+                            }
+                            curah_hujan=curah_hujan.concat([data_curah_hujan])
+                        }
                     }
                 })
 
-                const add_data=Object.assign({}, kabkot, {
+                const add_data=Object.assign({}, kec, {
                     provinsi:{
-                        id_region:kabkot.provinsi.id_region,
-                        nested:kabkot.provinsi.nested,
-                        type:kabkot.provinsi.type,
-                        region:kabkot.provinsi.region
+                        id_region:kec.provinsi.id_region,
+                        nested:kec.provinsi.nested,
+                        type:kec.provinsi.type,
+                        region:kec.provinsi.region
+                    },
+                    kabupaten_kota:{
+                        id_region:kec.kabupaten_kota.id_region,
+                        nested:kec.kabupaten_kota.nested,
+                        type:kec.kabupaten_kota.type,
+                        region:kec.kabupaten_kota.region
                     },
                     curah_hujan:curah_hujan
                 })
@@ -197,7 +235,7 @@ class CabaiRawit extends React.Component{
                     data:{
                         [values.idx]:{
                             curah_hujan:{
-                                [Number(values.bulan)-1]:{$set:data.data}
+                                [(Number(values.bulan)-1)*3+(Number(values.input_ke)-1)]:{$set:data.data}
                             }
                         }
                     }
@@ -251,14 +289,28 @@ class CabaiRawit extends React.Component{
                     }, 500);
                 break
                 case "tahun":
-                case "province_id":
+                case "regency_id":
                     this.fetchCurahHujan()
+                break
+                case "province_id":
+                    this.setState({
+                        kabupaten_kota_form:[],
+                        curah_hujan:update(this.state.curah_hujan, {
+                            regency_id:{$set:""}
+                        })
+                    }, ()=>{
+                        this.fetchKabupatenKotaForm()
+                        this.fetchCurahHujan()
+                    })
                 break
                 case "pulau":
                     this.setState({
                         curah_hujan:update(this.state.curah_hujan, {
-                            province_id:{$set:""}
-                        })
+                            province_id:{$set:""},
+                            regency_id:{$set:""}
+                        }),
+                        kabupaten_kota_form:[],
+                        provinsi_form:[]
                     }, ()=>{
                         this.fetchProvinsiForm()
                         this.fetchCurahHujan()
@@ -284,7 +336,7 @@ class CabaiRawit extends React.Component{
 
     //RENDER
     render(){
-        const {curah_hujan, edit_curah_hujan, provinsi_form, pulau_form}=this.state
+        const {curah_hujan, edit_curah_hujan, provinsi_form, pulau_form, kabupaten_kota_form}=this.state
 
         return (
             <>
@@ -307,6 +359,7 @@ class CabaiRawit extends React.Component{
                                         months_year={this.months_year}
                                         provinsi_form={provinsi_form}
                                         pulau_form={pulau_form}
+                                        kabupaten_kota_form={kabupaten_kota_form}
                                     />
                                 </div>
                             </div>
@@ -325,7 +378,7 @@ class CabaiRawit extends React.Component{
     }
 }
 
-const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
+const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
     const [full_screen, setFullScreen]=useState(false)
 
     //options
@@ -333,11 +386,19 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
         const year=(new Date()).getFullYear()
 
         let years=[]
-        for(var i=year-10; i<=year+2; i++){
+        for(var i=year-3; i<=year+2; i++){
             years=years.concat([{value:i, label:i}])
         }
 
         return [{value:"", label:"Pilih Tahun"}].concat(years)
+    }
+    const kabupaten_kota_options=()=>{
+        let data=kabupaten_kota_form.map(op=>{
+            return {label:op.region, value:op.id_region}
+        })
+        data=[{label:"Semua Kab/Kota", value:""}].concat(data)
+
+        return data
     }
     const provinsi_options=()=>{
         let data=provinsi_form.map(op=>{
@@ -363,29 +424,32 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
                 const test=[
                     Object.assign({}, data.data[i], {
                         index:i,
-                        index_table:i*4+0
+                        index_table:i*5+0
                     }),
                     Object.assign({}, data.data[i], {
                         index:i,
-                        index_table:i*4+1
+                        index_table:i*5+1
                     }),
                     Object.assign({}, data.data[i], {
                         index:i,
-                        index_table:i*4+2
+                        index_table:i*5+2
                     }),
                     Object.assign({}, data.data[i], {
                         index:i,
-                        index_table:i*4+3
+                        index_table:i*5+3
+                    }),
+                    Object.assign({}, data.data[i], {
+                        index:i,
+                        index_table:i*5+4
                     })
                 ]
     
                 new_data=new_data.concat(test)
             }
             if(data.data.length>0){
-                new_data=new_data.concat([{index:-1, index_table:data.data.length*4}, {index:-1, index_table:data.length*4+1}])
+                new_data=new_data.concat([{index:-1, index_table:data.data.length*5}, {index:-1, index_table:data.length*5+1}])
             }
         }
-        
         return new_data
     }
 
@@ -409,6 +473,87 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             return "Atas Normal";
         }
     }
+    const valueSifatBulan=(curah_hujan)=>{
+        if(curah_hujan.toString().trim()==""){
+            return ""
+        }
+
+        if(curah_hujan>200){
+            return "Bulan Basah"
+        }
+        else if(curah_hujan>=100 && curah_hujan<=200){
+            return "Bulan Lembab"
+        }
+        else if(curah_hujan>=60 && curah_hujan<100){
+            return "Bulan Kering"
+        }
+        else if(curah_hujan<60){
+            return "Bulan Sangat Kering"
+        }
+    }
+    const valueCurahHujanTahunan=(curah_hujan=[])=>{
+        const sum_curah_hujan=curah_hujan.reduce((total, value)=>{
+            let ch=0
+            if(value.curah_hujan.toString()!=""){
+                ch=Number(value.curah_hujan)
+            }
+
+            return total+ch
+        }, 0)
+
+        const count_curah_hujan=curah_hujan.reduce((total, value)=>{
+            let add=0
+            if(value.curah_hujan.toString()!=""){
+                add=1
+            }
+
+            return total+add
+        }, 0)
+
+        if(count_curah_hujan>0){
+            return Math.round(sum_curah_hujan/count_curah_hujan)
+        }
+        return ""
+    }
+    const valueCurahHujanNormalTahunan=(curah_hujan=[])=>{
+        const sum_curah_hujan=curah_hujan.reduce((total, value)=>{
+            let ch=0
+            if(value.curah_hujan_normal.toString()!=""){
+                ch=Number(value.curah_hujan_normal)
+            }
+
+            return total+ch
+        }, 0)
+
+        const count_curah_hujan=curah_hujan.reduce((total, value)=>{
+            let add=0
+            if(value.curah_hujan_normal.toString()!=""){
+                add=1
+            }
+
+            return total+add
+        }, 0)
+
+        if(count_curah_hujan>0){
+            return Math.round(sum_curah_hujan/count_curah_hujan)
+        }
+        return ""
+    }
+    const valueCountSifatBulan=(curah_hujan=[], type)=>{
+        let sifat_bulan=[]
+        curah_hujan.map(ch=>{
+            sifat_bulan=sifat_bulan.concat([valueSifatBulan(ch.curah_hujan)])
+        })
+        
+        let count=0;
+        for(var i=0; i<sifat_bulan.length; i++){
+            if(sifat_bulan[i].toString()==type.toString()){
+                count+=1
+            }
+        }
+
+        return count
+    }
 
     //table
     const columns=[
@@ -418,7 +563,7 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             width: 50,
             frozen: true,
             formatter:({row})=>{
-                if(row.index*4+0==row.index_table){
+                if(row.index*5+0==row.index_table){
                     return <span>{row.index+1}</span>
                 }
                 else{
@@ -427,13 +572,13 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'kabupaten_kota',
-            name: 'Kabupaten/Kota',
+            key: 'kecamatan',
+            name: 'Kecamatan',
             width: 220,
             resizable: true,
             frozen: true,
             formatter:({row})=>{
-                if(row.index*4+0==row.index_table){
+                if(row.index*5+0==row.index_table){
                     return <span>{row.region}</span>
                 }
                 else{
@@ -447,14 +592,17 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             width: 150,
             frozen: true,
             formatter:({row})=>{
-                if(row.index*4+0==row.index_table){
-                    return <span>Curah Hujan</span>
+                if(row.index*5+0==row.index_table){
+                    return <span>Curah Hujan (mm)</span>
                 }
-                else if(row.index*4+1==row.index_table){
-                    return <span>CH (Normal)</span>
+                else if(row.index*5+1==row.index_table){
+                    return <span>CH Normal (mm)</span>
                 }
-                else if(row.index*4+2==row.index_table){
-                    return <span>Sifat</span>
+                else if(row.index*5+2==row.index_table){
+                    return <span>Sifat CH</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>Sifat Bulan</span>
                 }
                 else{
                     return <span></span>
@@ -462,23 +610,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'bulan1',
-            name: '1',
+            key: 'bulan1_1',
+            name: 'Januari 1',
             width: 120,
             resizable: true,
             formatter:({row})=>{
                 const row_index=0
-    
-                if(row.index*4+0==row.index_table){
+            
+                if(row.index*5+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*4+1==row.index_table){
+                else if(row.index*5+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*4+2==row.index_table){
+                else if(row.index*5+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*4+3==row.index_table){
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
@@ -499,23 +650,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'bulan2',
-            name: '2',
+            key: 'bulan1_2',
+            name: 'Januari 2',
             width: 120,
             resizable: true,
             formatter:({row})=>{
                 const row_index=1
-    
-                if(row.index*4+0==row.index_table){
+            
+                if(row.index*5+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*4+1==row.index_table){
+                else if(row.index*5+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*4+2==row.index_table){
+                else if(row.index*5+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*4+3==row.index_table){
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
@@ -536,23 +690,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'bulan3',
-            name: '3',
+            key: 'bulan1_3',
+            name: 'Januari 3',
             width: 120,
             resizable: true,
             formatter:({row})=>{
                 const row_index=2
-    
-                if(row.index*4+0==row.index_table){
+            
+                if(row.index*5+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*4+1==row.index_table){
+                else if(row.index*5+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*4+2==row.index_table){
+                else if(row.index*5+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*4+3==row.index_table){
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
@@ -573,23 +730,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'bulan4',
-            name: '4',
+            key: 'bulan2_1',
+            name: 'Februari 1',
             width: 120,
             resizable: true,
             formatter:({row})=>{
                 const row_index=3
-    
-                if(row.index*4+0==row.index_table){
+            
+                if(row.index*5+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*4+1==row.index_table){
+                else if(row.index*5+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*4+2==row.index_table){
+                else if(row.index*5+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*4+3==row.index_table){
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
@@ -610,23 +770,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'bulan5',
-            name: '5',
+            key: 'bulan2_2',
+            name: 'Februari 2',
             width: 120,
             resizable: true,
             formatter:({row})=>{
                 const row_index=4
-    
-                if(row.index*4+0==row.index_table){
+            
+                if(row.index*5+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*4+1==row.index_table){
+                else if(row.index*5+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*4+2==row.index_table){
+                else if(row.index*5+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*4+3==row.index_table){
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
@@ -647,23 +810,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'bulan6',
-            name: '6',
+            key: 'bulan2_3',
+            name: 'Februari 3',
             width: 120,
             resizable: true,
             formatter:({row})=>{
                 const row_index=5
-    
-                if(row.index*4+0==row.index_table){
+            
+                if(row.index*5+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*4+1==row.index_table){
+                else if(row.index*5+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*4+2==row.index_table){
+                else if(row.index*5+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*4+3==row.index_table){
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
@@ -684,23 +850,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'bulan7',
-            name: '7',
+            key: 'bulan3_1',
+            name: 'Maret 1',
             width: 120,
             resizable: true,
             formatter:({row})=>{
                 const row_index=6
-    
-                if(row.index*4+0==row.index_table){
+            
+                if(row.index*5+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*4+1==row.index_table){
+                else if(row.index*5+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*4+2==row.index_table){
+                else if(row.index*5+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*4+3==row.index_table){
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
@@ -721,23 +890,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'bulan8',
-            name: '8',
+            key: 'bulan3_2',
+            name: 'Maret 2',
             width: 120,
             resizable: true,
             formatter:({row})=>{
                 const row_index=7
-    
-                if(row.index*4+0==row.index_table){
+            
+                if(row.index*5+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*4+1==row.index_table){
+                else if(row.index*5+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*4+2==row.index_table){
+                else if(row.index*5+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*4+3==row.index_table){
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
@@ -758,23 +930,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'bulan9',
-            name: '9',
+            key: 'bulan3_3',
+            name: 'Maret 3',
             width: 120,
             resizable: true,
             formatter:({row})=>{
                 const row_index=8
-    
-                if(row.index*4+0==row.index_table){
+            
+                if(row.index*5+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*4+1==row.index_table){
+                else if(row.index*5+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*4+2==row.index_table){
+                else if(row.index*5+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*4+3==row.index_table){
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
@@ -795,23 +970,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'bulan10',
-            name: '10',
+            key: 'bulan4_1',
+            name: 'April 1',
             width: 120,
             resizable: true,
             formatter:({row})=>{
                 const row_index=9
-    
-                if(row.index*4+0==row.index_table){
+            
+                if(row.index*5+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*4+1==row.index_table){
+                else if(row.index*5+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*4+2==row.index_table){
+                else if(row.index*5+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*4+3==row.index_table){
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
@@ -832,23 +1010,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'bulan11',
-            name: '11',
+            key: 'bulan4_2',
+            name: 'April 2',
             width: 120,
             resizable: true,
             formatter:({row})=>{
                 const row_index=10
-    
-                if(row.index*4+0==row.index_table){
+            
+                if(row.index*5+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*4+1==row.index_table){
+                else if(row.index*5+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*4+2==row.index_table){
+                else if(row.index*5+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*4+3==row.index_table){
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
@@ -869,23 +1050,26 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
             }
         },
         {
-            key: 'bulan12',
-            name: '12',
+            key: 'bulan4_3',
+            name: 'April 3',
             width: 120,
             resizable: true,
             formatter:({row})=>{
                 const row_index=11
-    
-                if(row.index*4+0==row.index_table){
+            
+                if(row.index*5+0==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan}</span>
                 }
-                else if(row.index*4+1==row.index_table){
+                else if(row.index*5+1==row.index_table){
                     return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
                 }
-                else if(row.index*4+2==row.index_table){
+                else if(row.index*5+2==row.index_table){
                     return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
                 }
-                else if(row.index*4+3==row.index_table){
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
                     return (
                         <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
                             <button 
@@ -897,6 +1081,1066 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
                             </button>
                         </div>
                     )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan5_1',
+            name: 'Mei 1',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=12
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan5_2',
+            name: 'Mei 2',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=13
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan5_3',
+            name: 'Mei 3',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=14
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan6_1',
+            name: 'Juni 1',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=15
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan6_2',
+            name: 'Juni 2',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=16
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan6_3',
+            name: 'Juni 3',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=17
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan7_1',
+            name: 'Juli 1',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=18
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan7_2',
+            name: 'Juli 2',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=19
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan7_3',
+            name: 'Juli 3',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=20
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan8_1',
+            name: 'Agustus 1',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=21
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan8_2',
+            name: 'Agustus 2',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=22
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan8_3',
+            name: 'Agustus 3',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=23
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan9_1',
+            name: 'September 1',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=24
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan9_2',
+            name: 'September 2',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=25
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan9_3',
+            name: 'September 3',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=26
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan10_1',
+            name: 'Oktober 1',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=27
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan10_2',
+            name: 'Oktober 2',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=28
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan10_3',
+            name: 'Oktober 3',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=29
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan11_1',
+            name: 'November 1',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=30
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan11_2',
+            name: 'November 2',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=31
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan11_3',
+            name: 'November 3',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=32
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan12_1',
+            name: 'Desember 1',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=33
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan12_2',
+            name: 'Desember 2',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=34
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'bulan12_3',
+            name: 'Desember 3',
+            width: 120,
+            resizable: true,
+            formatter:({row})=>{
+                const row_index=35
+            
+                if(row.index*5+0==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{row.curah_hujan[row_index].curah_hujan_normal}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(row.curah_hujan[row_index].curah_hujan, row.curah_hujan[row_index].curah_hujan_normal)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
+                }
+                else if(row.index*5+4==row.index_table){
+                    return (
+                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'jumlah_tahunan',
+            name: 'Jumlah Tahunan',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                const ch_tahunan=valueCurahHujanTahunan(row.curah_hujan)
+                const ch_normal_tahunan=valueCurahHujanNormalTahunan(row.curah_hujan)
+
+                if(row.index*5+0==row.index_table){
+                    return <span>{ch_tahunan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{ch_normal_tahunan}</span>
+                }
+                else if(row.index*5+2==row.index_table){
+                    return <span>{valueSifatHujan(ch_tahunan, ch_normal_tahunan)}</span>
+                }
+                else if(row.index*5+3==row.index_table){
+                    return <span>{valueSifatBulan(ch_tahunan)}</span>
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'jumlah_bulan_basah',
+            name: 'Jumlah Bulan Basah',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                const type="Bulan Basah"
+
+                if(row.index*5+3==row.index_table){
+                    return <span>{valueCountSifatBulan(row.curah_hujan, type)}</span>
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'jumlah_bulan_lembab',
+            name: 'Jumlah Bulan Lembab',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                const type="Bulan Lembab"
+
+                if(row.index*5+3==row.index_table){
+                    return <span>{valueCountSifatBulan(row.curah_hujan, type)}</span>
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'jumlah_bulan_kering',
+            name: 'Jumlah Bulan Kering',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                const type="Bulan Kering"
+
+                if(row.index*5+3==row.index_table){
+                    return <span>{valueCountSifatBulan(row.curah_hujan, type)}</span>
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'jumlah_bulan_sangat_kering',
+            name: 'Jumlah Bulan Sangat Kering',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                const type="Bulan Sangat Kering"
+
+                if(row.index*5+3==row.index_table){
+                    return <span>{valueCountSifatBulan(row.curah_hujan, type)}</span>
                 }
                 else{
                     return (
@@ -921,16 +2165,6 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
         <>
             <div className="d-flex mb-4">
                 <div className="d-flex">
-                    <div style={{width:"200px"}} className="me-2 position-relative">
-                        <CreatableSelect
-                            options={tahun_options()}
-                            onChange={e=>{
-                                typeFilter({target:{name:"tahun", value:e.value}})
-                            }}
-                            value={tahun_options().find(f=>f.value==data.tahun)}
-                            placeholder="Pilih Tahun"
-                        />
-                    </div>
                     <div style={{width:"200px"}} className="me-2">
                         <Select
                             options={pulau_options()}
@@ -954,6 +2188,17 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
                         />
                     </div>
                     <div style={{width:"200px"}} className="me-2">
+                        <Select
+                            options={kabupaten_kota_options()}
+                            value={kabupaten_kota_options().find(f=>f.value==data.regency_id)}
+                            onChange={e=>{
+                                typeFilter({target:{name:"regency_id", value:e.value}})
+                            }}
+                            placeholder="Semua Kab/Kota"
+                            classNamePrefix="form-select"
+                        />
+                    </div>
+                    <div style={{width:"200px"}} className="me-2">
                         <input
                             type="text"
                             className="form-control"
@@ -964,7 +2209,17 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
                         />
                     </div>
                 </div>
-                <div className="ms-auto">
+                <div className="ms-auto d-flex">
+                    <div style={{width:"200px"}} className="me-3 position-relative">
+                        <CreatableSelect
+                            options={tahun_options()}
+                            onChange={e=>{
+                                typeFilter({target:{name:"tahun", value:e.value}})
+                            }}
+                            value={tahun_options().find(f=>f.value==data.tahun)}
+                            placeholder="Pilih Tahun"
+                        />
+                    </div>
                     <button className="btn btn-primary btn-icon" type="button" title="download">
                         <FiDownload className="icon"/>
                     </button>
@@ -979,7 +2234,7 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
                     <DataGrid
                         rows={data_generated()}
                         columns={columns}
-                        className="rdg-light fill-grid"
+                        className={classNames("rdg-light","fill-grid")}
                         rowHeight={25}
                         headerRowHeight={40}
                         style={{height:"100%"}}
@@ -1014,16 +2269,6 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
                 <Modal.Header>
                     <div className="d-flex w-100">
                         <div className="d-flex">
-                            <div style={{width:"200px"}} className="me-2 position-relative">
-                                <CreatableSelect
-                                    options={tahun_options()}
-                                    onChange={e=>{
-                                        typeFilter({target:{name:"tahun", value:e.value}})
-                                    }}
-                                    value={tahun_options().find(f=>f.value==data.tahun)}
-                                    placeholder="Pilih Tahun"
-                                />
-                            </div>
                             <div style={{width:"200px"}} className="me-2">
                                 <Select
                                     options={pulau_options()}
@@ -1047,6 +2292,17 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
                                 />
                             </div>
                             <div style={{width:"200px"}} className="me-2">
+                                <Select
+                                    options={kabupaten_kota_options()}
+                                    value={kabupaten_kota_options().find(f=>f.value==data.regency_id)}
+                                    onChange={e=>{
+                                        typeFilter({target:{name:"regency_id", value:e.value}})
+                                    }}
+                                    placeholder="Semua Kab/Kota"
+                                    classNamePrefix="form-select"
+                                />
+                            </div>
+                            <div style={{width:"200px"}} className="me-2">
                                 <input
                                     type="text"
                                     className="form-control"
@@ -1057,7 +2313,17 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
                                 />
                             </div>
                         </div>
-                        <div className="ms-auto">
+                        <div className="ms-auto d-flex">
+                            <div style={{width:"200px"}} className="me-3 position-relative">
+                                <CreatableSelect
+                                    options={tahun_options()}
+                                    onChange={e=>{
+                                        typeFilter({target:{name:"tahun", value:e.value}})
+                                    }}
+                                    value={tahun_options().find(f=>f.value==data.tahun)}
+                                    placeholder="Pilih Tahun"
+                                />
+                            </div>
                             <button className="btn btn-primary btn-icon" type="button" title="download">
                                 <FiDownload className="icon"/>
                             </button>
@@ -1071,7 +2337,7 @@ const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
                     <DataGrid
                         rows={data_generated()}
                         columns={columns}
-                        className="rdg-light fill-grid"
+                        className={classNames("rdg-light","fill-grid")}
                         rowHeight={25}
                         headerRowHeight={40}
                         style={{height:"100%"}}
@@ -1195,4 +2461,4 @@ const ModalEdit=({data, toggleModalEdit, updateCurahHujan, request})=>{
 }
 
 
-export default withAuth(CabaiRawit)
+export default withAuth(CurahHujan)
