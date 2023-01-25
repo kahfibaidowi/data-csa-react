@@ -26,14 +26,12 @@ import DataGrid from 'react-data-grid'
 
 class CurahHujan extends React.Component{
     state={
-        kabupaten_kota_form:[],
         provinsi_form:[],
         pulau_form:[],
         curah_hujan:{
             per_page:"",
             q:"",
             tahun:"",
-            regency_id:"",
             province_id:"",
             pulau:"",
             data:[],
@@ -73,22 +71,11 @@ class CurahHujan extends React.Component{
             })
             .then(res=>res.data)
         },
-        apiGetsKabupatenKotaForm:async(provinsi)=>{
-            return await api(access_token()).get("/region/type/kabupaten_kota", {
-                params:{
-                    per_page:"",
-                    page:1,
-                    q:"",
-                    province_id:provinsi
-                },
-            })
-            .then(res=>res.data)
-        },
         apiGetsCurahHujan:async(params)=>{
             this.abortController.abort()
             this.abortController=new AbortController()
             
-            return await api(access_token()).get("/curah_hujan/type/kecamatan", {
+            return await api(access_token()).get("/curah_hujan/type/kabupaten_kota", {
                 params:params,
                 signal:this.abortController.signal
             })
@@ -121,23 +108,6 @@ class CurahHujan extends React.Component{
         .then(data=>{
             this.setState({
                 provinsi_form:data.data
-            })
-        })
-        .catch(err=>{
-            if(err.response.status===401){
-                localStorage.removeItem("login_data")
-                Router.push("/login")
-            }
-            toast.error("Gets Data Failed!", {position:"bottom-center"})
-        })
-    }
-    fetchKabupatenKotaForm=async()=>{
-        const {curah_hujan}=this.state
-
-        await this.request.apiGetsKabupatenKotaForm(curah_hujan.province_id)
-        .then(data=>{
-            this.setState({
-                kabupaten_kota_form:data.data
             })
         })
         .catch(err=>{
@@ -194,12 +164,6 @@ class CurahHujan extends React.Component{
                         nested:kec.provinsi.nested,
                         type:kec.provinsi.type,
                         region:kec.provinsi.region
-                    },
-                    kabupaten_kota:{
-                        id_region:kec.kabupaten_kota.id_region,
-                        nested:kec.kabupaten_kota.nested,
-                        type:kec.kabupaten_kota.type,
-                        region:kec.kabupaten_kota.region
                     },
                     curah_hujan:curah_hujan
                 })
@@ -289,27 +253,14 @@ class CurahHujan extends React.Component{
                     }, 500);
                 break
                 case "tahun":
-                case "regency_id":
-                    this.fetchCurahHujan()
-                break
                 case "province_id":
-                    this.setState({
-                        kabupaten_kota_form:[],
-                        curah_hujan:update(this.state.curah_hujan, {
-                            regency_id:{$set:""}
-                        })
-                    }, ()=>{
-                        this.fetchKabupatenKotaForm()
-                        this.fetchCurahHujan()
-                    })
+                    this.fetchCurahHujan()
                 break
                 case "pulau":
                     this.setState({
                         curah_hujan:update(this.state.curah_hujan, {
-                            province_id:{$set:""},
-                            regency_id:{$set:""}
+                            province_id:{$set:""}
                         }),
-                        kabupaten_kota_form:[],
                         provinsi_form:[]
                     }, ()=>{
                         this.fetchProvinsiForm()
@@ -336,14 +287,14 @@ class CurahHujan extends React.Component{
 
     //RENDER
     render(){
-        const {curah_hujan, edit_curah_hujan, provinsi_form, pulau_form, kabupaten_kota_form}=this.state
+        const {curah_hujan, edit_curah_hujan, provinsi_form, pulau_form}=this.state
 
         return (
             <>
                 <Layout>
                     <div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
                         <div>
-                            <h4 class="mb-3 mb-md-0">Data Curah Hujan</h4>
+                            <h4 class="mb-3 mb-md-0">Data Curah Hujan (Kabupaten/Kota)</h4>
                         </div>
                         <div class="d-flex align-items-center flex-wrap text-nowrap">
                         </div>
@@ -359,26 +310,18 @@ class CurahHujan extends React.Component{
                                         months_year={this.months_year}
                                         provinsi_form={provinsi_form}
                                         pulau_form={pulau_form}
-                                        kabupaten_kota_form={kabupaten_kota_form}
                                     />
                                 </div>
                             </div>
                         </div>
                     </div>
                 </Layout>
-    
-                <ModalEdit
-                    data={edit_curah_hujan}
-                    toggleModalEdit={this.toggleModalEdit}
-                    updateCurahHujan={this.updateCurahHujan}
-                    request={this.request}
-                />
             </>
         )
     }
 }
 
-const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
+const Table=({data, provinsi_form, pulau_form, typeFilter, toggleModalEdit})=>{
     const [full_screen, setFullScreen]=useState(false)
 
     //options
@@ -391,14 +334,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
         }
 
         return [{value:"", label:"Pilih Tahun"}].concat(years)
-    }
-    const kabupaten_kota_options=()=>{
-        let data=kabupaten_kota_form.map(op=>{
-            return {label:op.region, value:op.id_region}
-        })
-        data=[{label:"Semua Kab/Kota", value:""}].concat(data)
-
-        return data
     }
     const provinsi_options=()=>{
         let data=provinsi_form.map(op=>{
@@ -511,7 +446,7 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
         }, 0)
 
         if(count_curah_hujan>0){
-            return Math.round(sum_curah_hujan/count_curah_hujan)
+            return sum_curah_hujan/count_curah_hujan
         }
         return ""
     }
@@ -535,9 +470,33 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
         }, 0)
 
         if(count_curah_hujan>0){
-            return Math.round(sum_curah_hujan/count_curah_hujan)
+            return sum_curah_hujan/count_curah_hujan
         }
         return ""
+    }
+    const valueCurahHujanSumTahunan=(curah_hujan=[])=>{
+        const sum_curah_hujan=curah_hujan.reduce((total, value)=>{
+            let ch=0
+            if(value.curah_hujan.toString()!=""){
+                ch=Number(value.curah_hujan)
+            }
+
+            return total+ch
+        }, 0)
+
+        return sum_curah_hujan
+    }
+    const valueCurahHujanNormalSumTahunan=(curah_hujan=[])=>{
+        const sum_curah_hujan=curah_hujan.reduce((total, value)=>{
+            let ch=0
+            if(value.curah_hujan_normal.toString()!=""){
+                ch=Number(value.curah_hujan_normal)
+            }
+
+            return total+ch
+        }, 0)
+
+        return sum_curah_hujan
     }
     const valueCountSifatBulan=(curah_hujan=[], type)=>{
         let sifat_bulan=[]
@@ -572,8 +531,8 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
             }
         },
         {
-            key: 'kecamatan',
-            name: 'Kecamatan',
+            key: 'kabupaten_kota',
+            name: 'Kabupaten/Kota',
             width: 220,
             resizable: true,
             frozen: true,
@@ -629,19 +588,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -668,19 +614,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -709,19 +642,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -748,19 +668,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -789,19 +696,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -828,19 +722,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -869,19 +750,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -908,19 +776,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -949,19 +804,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -988,19 +830,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1029,19 +858,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -1068,19 +884,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1109,19 +912,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -1148,19 +938,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1189,19 +966,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -1228,19 +992,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1269,19 +1020,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -1308,19 +1046,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1349,19 +1074,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -1388,19 +1100,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1429,19 +1128,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -1468,19 +1154,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1509,19 +1182,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -1548,19 +1208,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1589,19 +1236,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -1628,19 +1262,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1669,19 +1290,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -1708,19 +1316,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1749,19 +1344,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -1788,19 +1370,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1829,19 +1398,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -1868,19 +1424,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1909,19 +1452,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -1948,19 +1478,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
-                }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
                 }
                 else{
                     return (
@@ -1989,19 +1506,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -2029,19 +1533,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 else if(row.index*5+3==row.index_table){
                     return <span>{valueSifatBulan(row.curah_hujan[row_index].curah_hujan)}</span>
                 }
-                else if(row.index*5+4==row.index_table){
-                    return (
-                        <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
-                            <button 
-                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
-                                type="button"
-                                onClick={ev=>toggleModalEdit(row.index, row.curah_hujan[row_index], true)}
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    )
-                }
                 else{
                     return (
                         <span></span>
@@ -2050,14 +1541,14 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
             }
         },
         {
-            key: 'jumlah_tahunan',
-            name: 'Jumlah Tahunan',
+            key: 'avg_tahunan',
+            name: 'Rata Rata Tahunan',
             width: 150,
             resizable: true,
             formatter:({row})=>{
                 const ch_tahunan=valueCurahHujanTahunan(row.curah_hujan)
                 const ch_normal_tahunan=valueCurahHujanNormalTahunan(row.curah_hujan)
-
+    
                 if(row.index*5+0==row.index_table){
                     return <span>{ch_tahunan}</span>
                 }
@@ -2078,13 +1569,35 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
             }
         },
         {
+            key: 'jumlah_tahunan',
+            name: 'Jumlah Tahunan',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                const ch_tahunan=valueCurahHujanSumTahunan(row.curah_hujan)
+                const ch_normal_tahunan=valueCurahHujanNormalSumTahunan(row.curah_hujan)
+    
+                if(row.index*5+0==row.index_table){
+                    return <span>{ch_tahunan}</span>
+                }
+                else if(row.index*5+1==row.index_table){
+                    return <span>{ch_normal_tahunan}</span>
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
             key: 'jumlah_bulan_basah',
             name: 'Jumlah Bulan Basah',
             width: 150,
             resizable: true,
             formatter:({row})=>{
                 const type="Bulan Basah"
-
+    
                 if(row.index*5+3==row.index_table){
                     return <span>{valueCountSifatBulan(row.curah_hujan, type)}</span>
                 }
@@ -2102,7 +1615,7 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
             resizable: true,
             formatter:({row})=>{
                 const type="Bulan Lembab"
-
+    
                 if(row.index*5+3==row.index_table){
                     return <span>{valueCountSifatBulan(row.curah_hujan, type)}</span>
                 }
@@ -2120,7 +1633,7 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
             resizable: true,
             formatter:({row})=>{
                 const type="Bulan Kering"
-
+    
                 if(row.index*5+3==row.index_table){
                     return <span>{valueCountSifatBulan(row.curah_hujan, type)}</span>
                 }
@@ -2138,7 +1651,7 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
             resizable: true,
             formatter:({row})=>{
                 const type="Bulan Sangat Kering"
-
+    
                 if(row.index*5+3==row.index_table){
                     return <span>{valueCountSifatBulan(row.curah_hujan, type)}</span>
                 }
@@ -2184,17 +1697,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                                 typeFilter({target:{name:"province_id", value:e.value}})
                             }}
                             placeholder="Semua Provinsi"
-                            classNamePrefix="form-select"
-                        />
-                    </div>
-                    <div style={{width:"200px"}} className="me-2">
-                        <Select
-                            options={kabupaten_kota_options()}
-                            value={kabupaten_kota_options().find(f=>f.value==data.regency_id)}
-                            onChange={e=>{
-                                typeFilter({target:{name:"regency_id", value:e.value}})
-                            }}
-                            placeholder="Semua Kab/Kota"
                             classNamePrefix="form-select"
                         />
                     </div>
@@ -2292,17 +1794,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                                 />
                             </div>
                             <div style={{width:"200px"}} className="me-2">
-                                <Select
-                                    options={kabupaten_kota_options()}
-                                    value={kabupaten_kota_options().find(f=>f.value==data.regency_id)}
-                                    onChange={e=>{
-                                        typeFilter({target:{name:"regency_id", value:e.value}})
-                                    }}
-                                    placeholder="Semua Kab/Kota"
-                                    classNamePrefix="form-select"
-                                />
-                            </div>
-                            <div style={{width:"200px"}} className="me-2">
                                 <input
                                     type="text"
                                     className="form-control"
@@ -2367,96 +1858,13 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                     }
                 </Modal.Body>
                 <Modal.Footer className="d-flex justify-content-between align-items-center py-1">
-                    <Modal.Title>Data Curah Hujan</Modal.Title>
+                    <Modal.Title>Data Curah Hujan (Kabupaten/Kota)</Modal.Title>
                     <button className="btn btn-light" type="button" onClick={e=>setFullScreen(false)}>
                         Tutup Full Screen
                     </button>
                 </Modal.Footer>
             </Modal>
         </>
-    )
-}
-
-const ModalEdit=({data, toggleModalEdit, updateCurahHujan, request})=>{
-
-    return (
-        <Modal 
-            show={data.is_open} 
-            onHide={toggleModalEdit} 
-            backdrop="static" 
-            size="sm" 
-            className="modal-nested"
-            backdropClassName="backdrop-nested" 
-            scrollable
-        >
-            <Formik
-                initialValues={data.curah_hujan}
-                onSubmit={updateCurahHujan}
-                validationSchema={
-                    yup.object().shape({
-                        id_region:yup.string().required(),
-                        tahun:yup.string().required(),
-                        bulan:yup.string().required(),
-                        curah_hujan:yup.number().required(),
-                        curah_hujan_normal:yup.number().required()
-                    })
-                }
-            >
-                {formik=>(
-                    <form onSubmit={formik.handleSubmit}>
-                        <Modal.Header closeButton>
-                            <h4 className="modal-title">Edit Curah Hujan</h4>
-                        </Modal.Header>
-                        <Modal.Body>
-                            <div className="mb-2">
-                                <label className="my-1 me-2">Curah Hujan</label>
-                                <NumberFormat
-                                    className="form-control"
-                                    thousandSeparator
-                                    value={formik.values.curah_hujan}
-                                    onValueChange={values=>{
-                                        const {value}=values
-                                        formik.setFieldValue("curah_hujan", value)
-                                    }}
-                                    suffix=" mm"
-                                    allowNegative={false}
-                                />
-                            </div>
-                            <div className="mb-2">
-                                <label className="my-1 me-2">Curah Hujan Normal</label>
-                                <NumberFormat
-                                    className="form-control"
-                                    thousandSeparator
-                                    value={formik.values.curah_hujan_normal}
-                                    onValueChange={values=>{
-                                        const {value}=values
-                                        formik.setFieldValue("curah_hujan_normal", value)
-                                    }}
-                                    suffix=" mm"
-                                    allowNegative={false}
-                                />
-                            </div>
-                        </Modal.Body>
-                        <Modal.Footer className="mt-3 border-top pt-2">
-                            <button 
-                                type="button" 
-                                className="btn btn-link text-gray me-auto" 
-                                onClick={toggleModalEdit}
-                            >
-                                Batal
-                            </button>
-                            <button 
-                                type="submit" 
-                                className="btn btn-primary"
-                                disabled={formik.isSubmitting||!(formik.isValid)}
-                            >
-                                Save Changes
-                            </button>
-                        </Modal.Footer>
-                    </form>
-                )}
-            </Formik>
-        </Modal>
     )
 }
 

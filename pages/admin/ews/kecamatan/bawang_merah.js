@@ -1,15 +1,15 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react"
 import update from "immutability-helper"
 import classNames from "classnames"
-import Layout from "../../../component/layout"
-import withAuth from "../../../component/hoc/auth"
+import Layout from "../../../../component/layout"
+import withAuth from "../../../../component/hoc/auth"
 import { Query, useMutation, useQuery, useQueryClient } from "react-query"
-import { api } from "../../../config/api"
-import { access_token, isUndefined } from "../../../config/config"
+import { api } from "../../../../config/api"
+import { access_token, isUndefined } from "../../../../config/config"
 import { toast } from "react-toastify"
 import Router from "next/router"
 import { FiChevronLeft, FiChevronRight, FiDownload, FiEdit, FiExternalLink, FiPlus, FiTrash, FiTrash2, FiUpload, FiX } from "react-icons/fi"
-import Avatar from "../../../component/ui/avatar"
+import Avatar from "../../../../component/ui/avatar"
 import { Modal, Spinner } from "react-bootstrap"
 import swal from "sweetalert2"
 import withReactContent from 'sweetalert2-react-content'
@@ -19,13 +19,13 @@ import AsyncCreatableSelect from 'react-select/async-creatable'
 import { Formik } from "formik"
 import * as yup from "yup"
 import NumberFormat from "react-number-format"
-import VirtualTable, { VirtualTableContext } from "../../../component/ui/virtual_table"
+import VirtualTable, { VirtualTableContext } from "../../../../component/ui/virtual_table"
 import BaseTable, {AutoResizer, Column} from "react-base-table"
 import DataGrid from 'react-data-grid'
 
 
 
-class CabaiBesar extends React.Component{
+class BawangMerah extends React.Component{
     state={
         kabupaten_kota_form:[],
         provinsi_form:[],
@@ -33,7 +33,7 @@ class CabaiBesar extends React.Component{
         ews:{
             per_page:"",
             q:"",
-            type:"cabai_besar",
+            type:"bawang_merah",
             tahun:"",
             regency_id:"",
             province_id:"",
@@ -327,7 +327,6 @@ class CabaiBesar extends React.Component{
                     this.fetchEws()
                 break
                 case "province_id":
-                    this.fetchEws()
                     this.setState({
                         ews:update(this.state.ews, {
                             regency_id:{$set:""}
@@ -378,7 +377,7 @@ class CabaiBesar extends React.Component{
                 <Layout>
                     <div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
                         <div>
-                            <h4 class="mb-3 mb-md-0">Data EWS (Bawang Merah)</h4>
+                            <h4 class="mb-3 mb-md-0">Data EWS Kecamatan (Bawang Merah)</h4>
                         </div>
                         <div class="d-flex align-items-center flex-wrap text-nowrap">
                         </div>
@@ -596,7 +595,7 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
         }, 0)
 
         if(count_curah_hujan>0){
-            return Math.round(sum_curah_hujan/count_curah_hujan)
+            return sum_curah_hujan/count_curah_hujan
         }
         return ""
     }
@@ -620,11 +619,59 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
         }, 0)
 
         if(count_curah_hujan>0){
-            return Math.round(sum_curah_hujan/count_curah_hujan)
+            return sum_curah_hujan/count_curah_hujan
         }
         return ""
     }
     const valueProduksiTahunan=(ews=[])=>{
+        const sum_produksi=ews.reduce((total, value)=>{
+            let produksi=0
+            if(value.produksi.toString()!=""){
+                produksi=Number(value.produksi)
+            }
+
+            return total+produksi
+        }, 0)
+
+        const count_produksi=ews.reduce((total, value)=>{
+            let add=0
+            if(value.produksi.toString()!=""){
+                add=1
+            }
+
+            return total+add
+        }, 0)
+
+        if(count_produksi>0){
+            return sum_produksi/count_produksi
+        }
+        return ""
+    }
+    const valueCurahHujanSumTahunan=(curah_hujan=[])=>{
+        const sum_curah_hujan=curah_hujan.reduce((total, value)=>{
+            let ch=0
+            if(value.curah_hujan.toString()!=""){
+                ch=Number(value.curah_hujan)
+            }
+
+            return total+ch
+        }, 0)
+
+        return sum_curah_hujan
+    }
+    const valueCurahHujanNormalSumTahunan=(curah_hujan=[])=>{
+        const sum_curah_hujan=curah_hujan.reduce((total, value)=>{
+            let ch=0
+            if(value.curah_hujan_normal.toString()!=""){
+                ch=Number(value.curah_hujan_normal)
+            }
+
+            return total+ch
+        }, 0)
+
+        return sum_curah_hujan
+    }
+    const valueProduksiSumTahunan=(ews=[])=>{
         const sum_produksi=ews.reduce((total, value)=>{
             let produksi=0
             if(value.produksi.toString()!=""){
@@ -3023,8 +3070,8 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
             }
         },
         {
-            key: 'jumlah_tahunan',
-            name: 'Jumlah Tahunan',
+            key: 'avg_tahunan',
+            name: 'Rata Rata Tahunan',
             width: 150,
             resizable: true,
             formatter:({row})=>{
@@ -3049,6 +3096,40 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                 }
                 else if(row.index*9+5==row.index_table){
                     return <span>{valueKekeringan(ch_tahunan)}</span>
+                }
+                else if(row.index*9+7==row.index_table){
+                    return (
+                        <span>
+                            <NumberFormat
+                                displayType="text" 
+                                value={produksi_tahunan}
+                                thousandSeparator={true}
+                            />
+                        </span>
+                    )
+                }
+                else{
+                    return (
+                        <span></span>
+                    )
+                }
+            }
+        },
+        {
+            key: 'jumlah_tahunan',
+            name: 'Jumlah Tahunan',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                const ch_tahunan=valueCurahHujanSumTahunan(row.curah_hujan)
+                const ch_normal_tahunan=valueCurahHujanNormalSumTahunan(row.curah_hujan)
+                const produksi_tahunan=valueProduksiSumTahunan(row.ews)
+
+                if(row.index*9+0==row.index_table){
+                    return <span>{ch_tahunan}</span>
+                }
+                else if(row.index*9+1==row.index_table){
+                    return <span>{ch_normal_tahunan}</span>
                 }
                 else if(row.index*9+7==row.index_table){
                     return (
@@ -3358,7 +3439,7 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                     }
                 </Modal.Body>
                 <Modal.Footer className="d-flex justify-content-between align-items-center py-1">
-                    <Modal.Title>Data EWS(Bawang Merah)</Modal.Title>
+                    <Modal.Title>Data EWS Kecamatan (Bawang Merah)</Modal.Title>
                     <button className="btn btn-light" type="button" onClick={e=>setFullScreen(false)}>
                         Tutup Full Screen
                     </button>
@@ -3492,4 +3573,4 @@ const ModalEdit=({data, toggleModalEdit, updateEws, request})=>{
 }
 
 
-export default withAuth(CabaiBesar)
+export default withAuth(BawangMerah)

@@ -26,8 +26,15 @@ const Layout=(props)=>{
         if(["/admin/region/provinsi", "/admin/region/kabupaten_kota", "/admin/region/kecamatan"].includes(router.pathname)){
             setCollapse("region")
         }
-        if(['/admin/ews/bawang_merah', '/admin/ews/cabai_besar', '/admin/ews/cabai_rawit'].includes(router.pathname)){
-            setCollapse("ews")
+        if(["/admin/ews/provinsi/bawang_merah", "/admin/ews/provinsi/cabai_besar", "/admin/ews/provinsi/cabai_rawit"].includes(router.pathname)){
+            setCollapse("ews_provinsi")
+        }
+        if(["/admin/ews/kabupaten_kota/bawang_merah", "/admin/ews/kabupaten_kota/cabai_besar", "/admin/ews/kabupaten_kota/cabai_rawit"].includes(router.pathname)){
+            setCollapse("ews_kabupaten_kota")
+        }
+        
+        if(["/admin/ews/kecamatan/bawang_merah", "/admin/ews/kecamatan/cabai_besar", "/admin/ews/kecamatan/cabai_rawit"].includes(router.pathname)){
+            setCollapse("ews_kecamatan")
         }
     }, [])
 
@@ -101,7 +108,7 @@ const Layout=(props)=>{
                 </div>
                 <div className="sidebar-body ps" onMouseOver={e=>toggleSidebarFolded(true)} onMouseOut={e=>toggleSidebarFolded(false)}>
                     <ul className="nav">
-                    <li className="nav-item nav-category">Main</li>
+                        <li className="nav-item nav-category">Main</li>
                         <li 
                             className={classNames(
                                 "nav-item", 
@@ -116,17 +123,6 @@ const Layout=(props)=>{
                         <li 
                             className={classNames(
                                 "nav-item", 
-                                {"active":active_page=="/admin/curah_hujan"}
-                            )}
-                        >
-                            <Link href="/admin/curah_hujan" className="nav-link">
-                                <FiCloudRain className="link-icon"/>
-                                <span className="link-title">Input Curah Hujan</span>
-                            </Link>
-                        </li>
-                        <li 
-                            className={classNames(
-                                "nav-item", 
                                 {"active":active_page=="/admin/prediksi_opt"}
                             )}
                         >
@@ -135,44 +131,171 @@ const Layout=(props)=>{
                                 <span className="link-title">Prediksi OPT</span>
                             </Link>
                         </li>
+                        <li className="nav-item nav-category">Curah Hujan</li>
+                        <li 
+                            className={classNames(
+                                "nav-item", 
+                                {"active":active_page=="/admin/curah_hujan/kecamatan"}
+                            )}
+                        >
+                            <Link href="/admin/curah_hujan/kecamatan" className="nav-link">
+                                <FiCloudRain className="link-icon"/>
+                                <span className="link-title">Kecamatan</span>
+                            </Link>
+                        </li>
+                        <li 
+                            className={classNames(
+                                "nav-item", 
+                                {"active":active_page=="/admin/curah_hujan/kabupaten_kota"}
+                            )}
+                        >
+                            <Link href="/admin/curah_hujan/kabupaten_kota" className="nav-link">
+                                <FiCloudRain className="link-icon"/>
+                                <span className="link-title">Kabupaten/Kota</span>
+                            </Link>
+                        </li>
+                        <li 
+                            className={classNames(
+                                "nav-item", 
+                                {"active":active_page=="/admin/curah_hujan/provinsi"}
+                            )}
+                        >
+                            <Link href="/admin/curah_hujan/provinsi" className="nav-link">
+                                <FiCloudRain className="link-icon"/>
+                                <span className="link-title">Provinsi</span>
+                            </Link>
+                        </li>
+                        <li className="nav-item nav-category">EWS</li>
                         <li 
                             className={classNames(
                                 "nav-item",
-                                {"active":["/admin/ews/bawang_merah"].includes(active_page)}
+                                {"active":["/admin/ews/kecamatan/bawang_merah", "/admin/ews/kecamatan/cabai_besar", "/admin/ews/kecamatan/cabai_rawit"].includes(active_page)}
                             )}
                         >
                             <a 
                                 className="nav-link cursor-pointer" 
-                                onClick={e=>setCollapse(collapse=="ews"?"":"ews")} 
-                                aria-expanded={collapse=="ews"}
+                                onClick={e=>setCollapse(collapse=="ews_kecamatan"?"":"ews_kecamatan")} 
+                                aria-expanded={collapse=="ews_kecamatan"}
                             >
                                 <FiTruck className="link-icon"/>
-                                <span className="link-title">Rekap EWS</span>
+                                <span className="link-title">Kecamatan</span>
                                 <FiChevronDown className="link-arrow"/>
                             </a>
-                            <Collapse in={collapse=="ews"}>
+                            <Collapse in={collapse=="ews_kecamatan"}>
                                 <div>
                                     <ul className="nav sub-menu">
                                         <li className="nav-item">
                                             <Link 
-                                                href="/admin/ews/bawang_merah" 
-                                                className={classNames("nav-link", {"active":active_page=="/admin/ews/bawang_merah"})}
+                                                href="/admin/ews/kecamatan/bawang_merah" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/ews/kecamatan/bawang_merah"})}
                                             >
                                                 Bawang Merah
                                             </Link>
                                         </li>
                                         <li className="nav-item">
                                             <Link 
-                                                href="/admin/ews/cabai_besar" 
-                                                className={classNames("nav-link", {"active":active_page=="/admin/ews/cabai_besar"})}
+                                                href="/admin/ews/kecamatan/cabai_besar" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/ews/kecamatan/cabai_besar"})}
                                             >
                                                 Cabai Besar
                                             </Link>
                                         </li>
                                         <li className="nav-item">
                                             <Link 
-                                                href="/admin/ews/cabai_rawit" 
-                                                className={classNames("nav-link", {"active":active_page=="/admin/ews/cabai_rawit"})}
+                                                href="/admin/ews/kecamatan/cabai_rawit" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/ews/kecamatan/cabai_rawit"})}
+                                            >
+                                                Cabai Rawit
+                                            </Link>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </Collapse>
+                        </li>
+                        <li 
+                            className={classNames(
+                                "nav-item",
+                                {"active":["/admin/ews/kabupaten_kota/bawang_merah", "/admin/ews/kabupaten_kota/cabai_besar", "/admin/ews/kabupaten_kota/cabai_rawit"].includes(active_page)}
+                            )}
+                        >
+                            <a 
+                                className="nav-link cursor-pointer" 
+                                onClick={e=>setCollapse(collapse=="ews_kabupaten_kota"?"":"ews_kabupaten_kota")} 
+                                aria-expanded={collapse=="ews_kabupaten_kota"}
+                            >
+                                <FiTruck className="link-icon"/>
+                                <span className="link-title">Kabupaten/Kota</span>
+                                <FiChevronDown className="link-arrow"/>
+                            </a>
+                            <Collapse in={collapse=="ews_kabupaten_kota"}>
+                                <div>
+                                    <ul className="nav sub-menu">
+                                        <li className="nav-item">
+                                            <Link 
+                                                href="/admin/ews/kabupaten_kota/bawang_merah" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/ews/kabupaten_kota/bawang_merah"})}
+                                            >
+                                                Bawang Merah
+                                            </Link>
+                                        </li>
+                                        <li className="nav-item">
+                                            <Link 
+                                                href="/admin/ews/kabupaten_kota/cabai_besar" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/ews/kabupaten_kota/cabai_besar"})}
+                                            >
+                                                Cabai Besar
+                                            </Link>
+                                        </li>
+                                        <li className="nav-item">
+                                            <Link 
+                                                href="/admin/ews/kabupaten_kota/cabai_rawit" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/ews/kabupaten_kota/cabai_rawit"})}
+                                            >
+                                                Cabai Rawit
+                                            </Link>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </Collapse>
+                        </li>
+                        <li 
+                            className={classNames(
+                                "nav-item",
+                                {"active":["/admin/ews/provinsi/bawang_merah", "/admin/ews/provinsi/cabai_besar", "/admin/ews/provinsi/cabai_rawit"].includes(active_page)}
+                            )}
+                        >
+                            <a 
+                                className="nav-link cursor-pointer" 
+                                onClick={e=>setCollapse(collapse=="ews_provinsi"?"":"ews_provinsi")} 
+                                aria-expanded={collapse=="ews_provinsi"}
+                            >
+                                <FiTruck className="link-icon"/>
+                                <span className="link-title">Provinsi</span>
+                                <FiChevronDown className="link-arrow"/>
+                            </a>
+                            <Collapse in={collapse=="ews_provinsi"}>
+                                <div>
+                                    <ul className="nav sub-menu">
+                                        <li className="nav-item">
+                                            <Link 
+                                                href="/admin/ews/provinsi/bawang_merah" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/ews/provinsi/bawang_merah"})}
+                                            >
+                                                Bawang Merah
+                                            </Link>
+                                        </li>
+                                        <li className="nav-item">
+                                            <Link 
+                                                href="/admin/ews/provinsi/cabai_besar" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/ews/provinsi/cabai_besar"})}
+                                            >
+                                                Cabai Besar
+                                            </Link>
+                                        </li>
+                                        <li className="nav-item">
+                                            <Link 
+                                                href="/admin/ews/provinsi/cabai_rawit" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/ews/provinsi/cabai_rawit"})}
                                             >
                                                 Cabai Rawit
                                             </Link>
