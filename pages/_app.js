@@ -1,8 +1,10 @@
+import '../styles/light/style.min.css'
 import 'react-bootstrap-typeahead/css/Typeahead.css'
 import 'react-toastify/dist/ReactToastify.css'
 import 'react-data-grid/lib/styles.css'
 // import 'mapbox-gl/dist/mapbox-gl.css'
 import 'leaflet/dist/leaflet.css'
+import "../styles/globals.css"
 
 import { ToastContainer } from "react-toastify"
 import Head from "next/head"
@@ -27,10 +29,6 @@ export default function App({Component, pageProps}) {
         <>
             <Head>
                 <title>Data CSA</title>
-                <link href={`/stylesheet/${theme_store.theme}/style.min.css`} rel="preload" as="style"/>
-                <link href={`/stylesheet/${theme_store.theme}/style.min.css`} rel="stylesheet"/>
-                <link href={`/stylesheet/globals.css`} rel="preload" as="style"/>
-                <link href={`/stylesheet/globals.css`} rel="stylesheet"/>
             </Head>
             <QueryClientProvider client={new QueryClient()}>
                 <Component {...pageProps} />
