@@ -114,3 +114,22 @@ thead.no-display{
         width: 100%;
     }
 }
+
+/* treeview */
+.treeview::before,
+.treeview::after {
+  content: '';
+  position: absolute;
+  background: grey;
+}
+.treeview::before {
+  inset-inline-start: 15px;
+  inline-size: 1px;
+  block-size: 100%;
+}
+.treeview::after {
+  inset-block-start: 50%;
+  inset-inline-start: 15px;
+  block-size: 1px;
+  inline-size: 15px;
+}
