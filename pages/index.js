@@ -10,9 +10,10 @@ import CreatableSelect from "react-select/creatable"
 import { isUndefined, random_rgba } from "../config/config"
 import NumberFormat from "react-number-format"
 import Link from "next/link"
+import { Navbar } from "react-bootstrap"
 
 const Chart=dynamic(()=>import("../component/modules/frontpage/chart"), {ssr:false})
-const Map=dynamic(()=>import("../component/modules/frontpage/map"), {ssr:false})
+const Map=dynamic(()=>import("../component/modules/frontpage/map_windy"), {ssr:false})
 
 class Frontpage extends React.Component{
     state={
@@ -34,9 +35,9 @@ class Frontpage extends React.Component{
         this.setState({
             tahun:tahun
         }, ()=>{
-            this.fetchSummaryEwsProduksi()
-            this.fetchSummarySifatHujanKabupatenKota()
-            this.fetchProvinsiForm()
+            // this.fetchSummaryEwsProduksi()
+            this.fetchSummarySifatHujanKecamatan()
+            // this.fetchProvinsiForm()
         })
     }
     
@@ -52,6 +53,14 @@ class Frontpage extends React.Component{
         },
         apiGetSummarySifatHujanKabupatenKota:async(tahun)=>{
             return await api().get("/frontpage/summary/type/sifat_hujan_kabupaten_kota", {
+                params:{
+                    tahun:tahun
+                }
+            })
+            .then(res=>res.data)
+        },
+        apiGetSummarySifatHujanKecamatan:async(tahun)=>{
+            return await api().get("/frontpage/summary/type/sifat_hujan_kecamatan", {
                 params:{
                     tahun:tahun
                 }
@@ -85,72 +94,32 @@ class Frontpage extends React.Component{
             toast.error("Gets Data Failed!", {position:"bottom-center"})
         })
     }
-    fetchSummarySifatHujanKabupatenKota=async()=>{
+    fetchSummarySifatHujanKecamatan=async()=>{
         const {tahun}=this.state
 
-        await this.request.apiGetSummarySifatHujanKabupatenKota(tahun)
+        await this.request.apiGetSummarySifatHujanKecamatan(tahun)
         .then(data=>{
-            //banjir
-            const banjir=data.data.map(d=>{
-                let db=[]
-                this.months_year().map(month=>{
-                    const curah_hujan=d.curah_hujan.find(f=>f.bulan.toString()==month.toString())
-
-                    if(!isUndefined(curah_hujan)){
-                        db=db.concat([this.valueBanjir(curah_hujan.curah_hujan)])
-                    }
-                    else{
-                        db=db.concat([""])
-                    }
-                })
-
-                return {
-                    region:d.region,
-                    provinsi:d.parent,
-                    data:db,
-                    rgb:random_rgba()
-                }
-            })
-            //kekeringan
-            const kekeringan=data.data.map(d=>{
-                let db=[]
-                this.months_year().map(month=>{
-                    const curah_hujan=d.curah_hujan.find(f=>f.bulan.toString()==month.toString())
-                    
-                    if(!isUndefined(curah_hujan)){
-                        db=db.concat([this.valueKekeringan(curah_hujan.curah_hujan)])
-                    }
-                    else{
-                        db=db.concat([""])
-                    }
-                })
-
-                return {
-                    region:d.region,
-                    provinsi:d.parent,
-                    data:db,
-                    rgb:random_rgba()
-                }
-            })
             //map
             const geo_features=data.data.map(d=>{
                 //curah hujan
                 let curah_hujan=[]
                 this.months_year().map(month=>{
-                    const find_curah_hujan=d.curah_hujan.find(f=>f.bulan.toString()==month.toString())
-                    if(!isUndefined(find_curah_hujan)){
-                        curah_hujan=curah_hujan.concat([find_curah_hujan])
-                    }
-                    else{
-                        const data_curah_hujan={
-                            id_region:d.id_region,
-                            tahun:tahun,
-                            bulan:month,
-                            curah_hujan:"",
-                            curah_hujan_normal:"",
-                            sifat:""
+                    for(var i=1; i<=3; i++){
+                        const find_curah_hujan=d.curah_hujan.find(f=>f.bulan.toString()==month.toString() && f.input_ke.toString()==i.toString())
+                        if(!isUndefined(find_curah_hujan)){
+                            curah_hujan=curah_hujan.concat([find_curah_hujan])
                         }
-                        curah_hujan=curah_hujan.concat([data_curah_hujan])
+                        else{
+                            const data_curah_hujan={
+                                id_region:d.id_region,
+                                tahun:tahun,
+                                bulan:month,
+                                curah_hujan:"",
+                                curah_hujan_normal:"",
+                                sifat:""
+                            }
+                            curah_hujan=curah_hujan.concat([data_curah_hujan])
+                        }
                     }
                 })
 
@@ -165,8 +134,6 @@ class Frontpage extends React.Component{
             })
 
             this.setState({
-                banjir:banjir,
-                kekeringan:kekeringan,
                 map_curah_hujan:geo_features
             })
         })
@@ -187,16 +154,6 @@ class Frontpage extends React.Component{
     }
 
     //VALUES
-    tahun_options=()=>{
-        const year=(new Date()).getFullYear()
-
-        let years=[]
-        for(var i=year-2; i<=year+2; i++){
-            years=years.concat([{value:i, label:i}])
-        }
-
-        return [{value:"", label:"Pilih Tahun"}].concat(years)
-    }
     months_year=()=>{
         let months=[]
         for(var i=1; i<=12; i++){
@@ -245,7 +202,7 @@ class Frontpage extends React.Component{
         }, ()=>{
             if(this.state.tahun.toString()!=""){
                 this.fetchSummaryEwsProduksi()
-                this.fetchSummarySifatHujanKabupatenKota()
+                this.fetchSummarySifatHujanKecamatan()
             }
         })
     }
@@ -255,154 +212,33 @@ class Frontpage extends React.Component{
 
         return (
             <>
-                <nav 
-                    className="navbar navbar-expand-lg"
-                    style={{
-                        left:0,
-                        top:0,
-                        width:"100%",
-                        zIndex:99999999
-                    }}
-                >
-                    <div className="container">
-                        <a href="#" className="navbar-brand">
+                <Navbar expand="lg" style={{left:0, top:0, width:"100%", zIndex:99999999, height:"auto"}}>
+                    <div className="container d-flex">
+                        <Navbar.Toggle aria-controls="nav-collapse" />
+                        <a href="#" className="navbar-brand me-auto ms-3 ms-lg-0">
                             <span className="text-primary">EWS</span>
                         </a>
-                        <Link href="/login" className="btn btn-primary btn-pill">
+                        <Link href="/login" className="btn btn-primary btn-pill order-lg-1">
                             Login Admin
                         </Link>
+                        <Navbar.Collapse id="nav-collapse">
+                            <ul class="navbar-nav mx-auto mt-2 mt-lg-0">
+                                <li class="nav-item">
+                                    <Link class="nav-link link-dark fs-15px fw-medium" href="/">Dashboard</Link>
+                                </li>
+                                <li class="nav-item">
+                                    <Link class="nav-link link-dark fs-15px fw-medium" href="/peringatan_dini">Peringatan Dini</Link>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link link-dark fs-15px fw-medium" href="#">Opt Utama</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link link-dark fs-15px fw-medium" href="#">Jadwal Tanam</a>
+                                </li>
+                            </ul>
+                        </Navbar.Collapse>
                     </div>
-                </nav>
-                <div className="d-flex" style={{marginTop:"70px"}}>
-                    <div className="container">
-                        <div className="row mt-3">
-                            <div className="col-12">
-                                <div className="d-flex justify-content-between align-items-center flex-wrap grid-margin">
-                                    <div>
-                                        <h4 className="mb-3 mb-md-0">Welcome to Frontpage</h4>
-                                    </div>
-                                    <div className="d-flex align-items-center flex-wrap text-nowrap">
-                                        <div className="ms-2" style={{minWidth:"150px"}}>
-                                            <CreatableSelect
-                                                options={this.tahun_options()}
-                                                onChange={e=>this.typeTahun(e)}
-                                                value={this.tahun_options().find(f=>f.value==tahun)}
-                                                placeholder="Pilih Tahun"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="row flex-grow-1 mt-3">
-                            <div className="col-md-4 grid-margin stretch-card">
-                                <div className="card">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between align-items-baseline">
-                                            <h6 className="card-title mb-1">Bawang Merah</h6>
-                                        </div>
-                                        <div className="row">
-                                            <div className="col-6 col-md-12 col-xl-5">
-                                                <h3 className="mb-1" style={{fontWeight:"700"}}>
-                                                    <NumberFormat
-                                                        displayType="text"
-                                                        thousandSeparator
-                                                        value={summary_ews_produksi.bawang_merah}
-                                                    />
-                                                </h3>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col-md-4 grid-margin stretch-card">
-                                <div className="card">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between align-items-baseline">
-                                            <h6 className="card-title mb-1">Cabai Besar</h6>
-                                        </div>
-                                        <div className="row">
-                                            <div className="col-6 col-md-12 col-xl-5">
-                                                <h3 className="mb-1" style={{fontWeight:"700"}}>
-                                                    <NumberFormat
-                                                        displayType="text"
-                                                        thousandSeparator
-                                                        value={summary_ews_produksi.cabai_besar}
-                                                    />
-                                                </h3>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col-md-4 grid-margin stretch-card">
-                                <div className="card">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between align-items-baseline">
-                                            <h6 className="card-title mb-1">Cabai Rawit</h6>
-                                        </div>
-                                        <div className="row">
-                                            <div className="col-6 col-md-12 col-xl-5">
-                                                <h3 className="mb-1" style={{fontWeight:"700"}}>
-                                                    <NumberFormat
-                                                        displayType="text"
-                                                        thousandSeparator
-                                                        value={summary_ews_produksi.cabai_rawit}
-                                                    />
-                                                </h3>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="row mt-4 mb-5">
-                            <div className="col-12">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h6 class="card-title mb-2">Pemetaan Sifat Hujan</h6>
-                                        <Map 
-                                            data={map_curah_hujan} 
-                                            className="map-responsive-full"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="row mt-4">
-                            <div className="col-12">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h6 class="card-title mb-5">Peringatan dini Banjir pada Lahan Pertanian Holtikultura</h6>
-                                        <div className="d-flex">
-                                            <Chart
-                                                data={banjir}
-                                                labels={["Aman", "Waspada", "Rawan", ""]}
-                                                provinsi_form={provinsi_form}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="row mt-4 mb-5">
-                            <div className="col-12">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h6 class="card-title mb-5">Peringatan dini Kekeringan pada Lahan Pertanian Holtikultura</h6>
-                                        <div className="d-flex">
-                                            <Chart
-                                                data={kekeringan}
-                                                labels={["Aman", "Waspada", "Rawan", ""]}
-                                                provinsi_form={provinsi_form}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                </Navbar>
             </>
         )
     }

@@ -102,6 +102,13 @@
   dependencies:
     regenerator-runtime "^0.13.11"
 
+"@babel/runtime@^7.4.4":
+  version "7.20.13"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.20.13.tgz#7055ab8a7cff2b8f6058bf6ae45ff84ad2aded4b"
+  integrity sha512-gt3PKXs0DBoL9xCvOIIZ2NEqAGZqHjAnmVbfQtB620V0uReIQutpel14KcneZuer7UioY8ALKZ7iocavvzTNFA==
+  dependencies:
+    regenerator-runtime "^0.13.11"
+
 "@babel/template@^7.18.10":
   version "7.18.10"
   resolved "https://registry.yarnpkg.com/@babel/template/-/template-7.18.10.tgz#6f9134835970d1dbf0835c0d100c9f38de0c5e71"
@@ -807,6 +814,11 @@ escape-string-regexp@^4.0.0:
   resolved "https://registry.yarnpkg.com/escape-string-regexp/-/escape-string-regexp-4.0.0.tgz#14ba83a5d373e3d311e5afca29cf5bfad965bf34"
   integrity sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==
 
+fast-deep-equal@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/fast-deep-equal/-/fast-deep-equal-2.0.1.tgz#7b05218ddf9667bf7f370bf7fdb2cb15fdd0aa49"
+  integrity sha512-bCK/2Z4zLidyB4ReuIsvALH6w31YfAQDmXMqMx6FyfHqvBxtjC0eRumeSu4Bs3XtXwpyIywtSTrVT99BxY1f9w==
+
 fast-deep-equal@^3.1.1:
   version "3.1.3"
   resolved "https://registry.yarnpkg.com/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz#3a7d56b559d6cbc3eb512325244e619a65c6c525"
@@ -1033,10 +1045,15 @@ kdbush@^3.0.0:
   resolved "https://registry.yarnpkg.com/kdbush/-/kdbush-3.0.0.tgz#f8484794d47004cc2d85ed3a79353dbe0abc2bf0"
   integrity sha512-hRkd6/XW4HTsA9vjVpY9tuXJYLSlelnkTmVFu4M9/7MIYQtFcHpbugAU7UbOfjOiVSVYl2fqgBuJ32JUmRo5Ew==
 
-leaflet@1.7.1:
-  version "1.7.1"
-  resolved "https://registry.yarnpkg.com/leaflet/-/leaflet-1.7.1.tgz#10d684916edfe1bf41d688a3b97127c0322a2a19"
-  integrity sha512-/xwPEBidtg69Q3HlqPdU3DnrXQOvQU/CCHA1tcDQVzOwm91YMYaILjNp7L4Eaw5Z4sOYdbBz6koWyibppd8Zqw==
+leaflet.antimeridian@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/leaflet.antimeridian/-/leaflet.antimeridian-1.0.0.tgz#1826577d34a18aacebc0c0fd24d0403a7210bd92"
+  integrity sha512-679iWgPWlLpViyWvug4HLMKlfHig5KmxvCNKSHwxGl2J1ArzXKE0XlIwOhVHT0F33QlVlGZ4pfFKS3r/w8NfHA==
+
+leaflet@1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/leaflet/-/leaflet-1.4.0.tgz#d5f56eeb2aa32787c24011e8be4c77e362ae171b"
+  integrity sha512-x9j9tGY1+PDLN9pcWTx9/y6C5nezoTMB8BLK5jTakx+H7bPlnbCHfi9Hjg+Qt36sgDz/cb9lrSpNQXmk45Tvhw==
 
 lines-and-columns@^1.1.6:
   version "1.2.4"
@@ -1377,6 +1394,11 @@ react-chartjs-2@^5.1.0:
   resolved "https://registry.yarnpkg.com/react-chartjs-2/-/react-chartjs-2-5.1.0.tgz#8179f8120518c86c644f9d46aee537de7ac3449a"
   integrity sha512-Gt76b7+p7nMQq0MvkWfUSNAzIm/TLAnAO32zIpSzrQyc9JWRbVCtq8qOzPJmfpDzPcIJ7Y9Gp5g+VdTRrGITsQ==
 
+react-css-component@^1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/react-css-component/-/react-css-component-1.0.2.tgz#4763946764dc88985ef70a438a03f004929d4ad4"
+  integrity sha512-O2LZx6uBUuFDMxfEZ+yo+WnTkzLfqQq0zjivMlMBnpWeyZ7Dhq3gXaekk2a2nBNmHUwF7IVA1ICpDXyLU/wT7g==
+
 react-data-grid@^7.0.0-beta.20:
   version "7.0.0-beta.20"
   resolved "https://registry.yarnpkg.com/react-data-grid/-/react-data-grid-7.0.0-beta.20.tgz#8a130b7387b0b09fd3f3b1d57a45efd74966ead4"
@@ -1511,6 +1533,18 @@ react-window@^1.8.2, react-window@^1.8.8:
   dependencies:
     "@babel/runtime" "^7.0.0"
     memoize-one ">=3.1.1 <6"
+
+react-windy-leaflet@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/react-windy-leaflet/-/react-windy-leaflet-0.2.0.tgz#94865480be2aa3943a1b073d0206d1456c296f10"
+  integrity sha512-w7virxJFF+Vo2A0rDuOZe95s6f3n6ZayTteHZO8h6PJFhhYIRAHB08ruzxt0bjN6G6Wx1T3gO8pVh8eP0wFkwg==
+  dependencies:
+    "@babel/runtime" "^7.4.4"
+    fast-deep-equal "^2.0.1"
+    hoist-non-react-statics "^3.3.0"
+    leaflet.antimeridian "^1.0.0"
+    react-css-component "^1.0.2"
+    warning "^4.0.3"
 
 react@18.2.0:
   version "18.2.0"
