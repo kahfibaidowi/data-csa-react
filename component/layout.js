@@ -247,15 +247,15 @@ const Layout=(props)=>{
                 </div>
             </nav>
             <nav 
-                class="settings-sidebar"
+                className="settings-sidebar"
                 style={{
                     right:show_setting?"0":"-232px"
                 }}
             >
-                <div class="sidebar-body">
+                <div className="sidebar-body">
                     <a 
                         href="#" 
-                        class="settings-sidebar-toggler" 
+                        className="settings-sidebar-toggler" 
                         onClick={e=>{
                             e.preventDefault()
                             setShowSetting(!show_setting)
@@ -263,41 +263,41 @@ const Layout=(props)=>{
                     >
                         <FiSettings/>
                     </a>
-                    <h6 class="text-muted mb-2">Sidebar:</h6>
-                    <div class="mb-3 pb-3 border-bottom">
-                        <div class="form-check form-check-inline">
+                    <h6 className="text-muted mb-2">Sidebar:</h6>
+                    <div className="mb-3 pb-3 border-bottom">
+                        <div className="form-check form-check-inline">
                             <input 
                                 type="radio" 
-                                class="form-check-input" 
+                                className="form-check-input" 
                                 name="sidebarThemeSettings" 
                                 id="sidebarLight" 
                                 value="sidebar-light" 
                                 checked={theme_store.sidebar=="light"?true:false}
                                 onChange={e=>theme_store.setSidebar("light")}
                             />
-                            <label class="form-check-label" for="sidebarLight">
+                            <label className="form-check-label" htmlFor="sidebarLight">
                             Light
                             </label>
                         </div>
-                        <div class="form-check form-check-inline">
+                        <div className="form-check form-check-inline">
                             <input 
                                 type="radio" 
-                                class="form-check-input" 
+                                className="form-check-input" 
                                 name="sidebarThemeSettings" 
                                 id="sidebarDark" 
                                 value="sidebar-dark"
                                 checked={theme_store.sidebar=="dark"?true:false}
                                 onChange={e=>theme_store.setSidebar("dark")}
                             />
-                            <label class="form-check-label" for="sidebarDark">
+                            <label className="form-check-label" htmlFor="sidebarDark">
                                 Dark
                             </label>
                         </div>
                     </div>
-                    <div class="theme-wrapper">
-                        <h6 class="text-muted mb-2">Light Theme:</h6>
+                    <div className="theme-wrapper">
+                        <h6 className="text-muted mb-2">Light Theme:</h6>
                         <button 
-                            class={classNames("theme-item", {"active":theme_store.theme=="light"})}
+                            className={classNames("theme-item", {"active":theme_store.theme=="light"})}
                             type="button"
                             onClick={e=>theme_store.setTheme("light")}
                         >

@@ -36,8 +36,9 @@ class Frontpage extends React.Component{
             tahun:tahun
         }, ()=>{
             // this.fetchSummaryEwsProduksi()
-            this.fetchSummarySifatHujanKecamatan()
+            // this.fetchSummarySifatHujanKecamatan()
             // this.fetchProvinsiForm()
+            this.fetchSummarySifatHujanKabupatenKota()
         })
     }
     
@@ -94,45 +95,54 @@ class Frontpage extends React.Component{
             toast.error("Gets Data Failed!", {position:"bottom-center"})
         })
     }
-    fetchSummarySifatHujanKecamatan=async()=>{
+    fetchSummarySifatHujanKabupatenKota=async()=>{
         const {tahun}=this.state
 
-        await this.request.apiGetSummarySifatHujanKecamatan(tahun)
+        await this.request.apiGetSummarySifatHujanKabupatenKota(tahun)
         .then(data=>{
             //map
             const geo_features=data.data.map(d=>{
-                //curah hujan
-                let curah_hujan=[]
-                this.months_year().map(month=>{
-                    for(var i=1; i<=3; i++){
-                        const find_curah_hujan=d.curah_hujan.find(f=>f.bulan.toString()==month.toString() && f.input_ke.toString()==i.toString())
-                        if(!isUndefined(find_curah_hujan)){
-                            curah_hujan=curah_hujan.concat([find_curah_hujan])
-                        }
-                        else{
-                            const data_curah_hujan={
-                                id_region:d.id_region,
-                                tahun:tahun,
-                                bulan:month,
-                                curah_hujan:"",
-                                curah_hujan_normal:"",
-                                sifat:""
+                const kecamatan=d.kecamatan.map(k=>{
+                    //curah hujan
+                    let curah_hujan=[]
+                    this.months_year().map(month=>{
+                        for(var i=1; i<=3; i++){
+                            const find_curah_hujan=k.curah_hujan.find(f=>f.bulan.toString()==month.toString() && f.input_ke.toString()==i.toString())
+                            if(!isUndefined(find_curah_hujan)){
+                                curah_hujan=curah_hujan.concat([find_curah_hujan])
                             }
-                            curah_hujan=curah_hujan.concat([data_curah_hujan])
+                            else{
+                                const data_curah_hujan={
+                                    id_region:d.id_region,
+                                    tahun:tahun,
+                                    bulan:month,
+                                    curah_hujan:"",
+                                    curah_hujan_normal:"",
+                                    sifat:""
+                                }
+                                curah_hujan=curah_hujan.concat([data_curah_hujan])
+                            }
                         }
+                    })
+
+                    return {
+                        region:k.region,
+                        curah_hujan:curah_hujan
                     }
                 })
+
+                const curah_hujan_kabkota=this.valueKabupatenKotaCurahHujan({kecamatan})
 
                 return {
                     type:"Feature",
                     properties:{
                         region:d.region,
-                        curah_hujan:curah_hujan
+                        curah_hujan:curah_hujan_kabkota
                     },
                     geometry:!isUndefined(d.geo_json.graph)?d.geo_json.graph:{type:"MultiPolygon", coordinates:[]}
                 }
             })
-
+            
             this.setState({
                 map_curah_hujan:geo_features
             })
@@ -141,6 +151,53 @@ class Frontpage extends React.Component{
             toast.error("Gets Data Failed!", {position:"bottom-center"})
         })
     }
+    // fetchSummarySifatHujanKecamatan=async()=>{
+    //     const {tahun}=this.state
+
+    //     await this.request.apiGetSummarySifatHujanKecamatan(tahun)
+    //     .then(data=>{
+    //         //map
+    //         const geo_features=data.data.map(d=>{
+    //             //curah hujan
+    //             let curah_hujan=[]
+    //             this.months_year().map(month=>{
+    //                 for(var i=1; i<=3; i++){
+    //                     const find_curah_hujan=d.curah_hujan.find(f=>f.bulan.toString()==month.toString() && f.input_ke.toString()==i.toString())
+    //                     if(!isUndefined(find_curah_hujan)){
+    //                         curah_hujan=curah_hujan.concat([find_curah_hujan])
+    //                     }
+    //                     else{
+    //                         const data_curah_hujan={
+    //                             id_region:d.id_region,
+    //                             tahun:tahun,
+    //                             bulan:month,
+    //                             curah_hujan:"",
+    //                             curah_hujan_normal:"",
+    //                             sifat:""
+    //                         }
+    //                         curah_hujan=curah_hujan.concat([data_curah_hujan])
+    //                     }
+    //                 }
+    //             })
+
+    //             return {
+    //                 type:"Feature",
+    //                 properties:{
+    //                     region:d.region,
+    //                     curah_hujan:curah_hujan
+    //                 },
+    //                 geometry:!isUndefined(d.geo_json.graph)?d.geo_json.graph:{type:"MultiPolygon", coordinates:[]}
+    //             }
+    //         })
+
+    //         this.setState({
+    //             map_curah_hujan:geo_features
+    //         })
+    //     })
+    //     .catch(err=>{
+    //         toast.error("Gets Data Failed!", {position:"bottom-center"})
+    //     })
+    // }
     fetchProvinsiForm=async()=>{
         await this.request.apiGetProvinsiForm()
         .then(data=>{
@@ -207,8 +264,50 @@ class Frontpage extends React.Component{
         })
     }
 
+    //HELPERS
+    valueKabupatenKotaCurahHujanColumn=(data_kabkota, idx_column)=>{
+        let curah_hujan=[]
+
+        data_kabkota.kecamatan.map(kec=>{
+            if(!isUndefined(kec.curah_hujan[idx_column].id_curah_hujan)){
+                curah_hujan=curah_hujan.concat([kec.curah_hujan[idx_column]])
+            }
+        })
+
+        return curah_hujan
+    }
+    valueKabupatenKotaCurahHujan=(data_kabkota)=>{
+        let curah_hujan=[]
+
+        for(var i=0; i<36; i++){
+            const ch_kabupaten_kota_column=this.valueKabupatenKotaCurahHujanColumn(data_kabkota, i)
+
+            if(ch_kabupaten_kota_column.length>0){
+                const ch=ch_kabupaten_kota_column.reduce((carry, item)=>{
+                    return Number(carry)+Number(item.curah_hujan)
+                }, 0)
+                const ch_normal=ch_kabupaten_kota_column.reduce((carry, item)=>{
+                    return Number(carry)+Number(item.curah_hujan_normal)
+                }, 0)
+
+                curah_hujan=curah_hujan.concat([{
+                    curah_hujan:ch/ch_kabupaten_kota_column.length,
+                    curah_hujan_normal:ch_normal/ch_kabupaten_kota_column.length
+                }])
+            }
+            else{
+                curah_hujan=curah_hujan.concat([{
+                    curah_hujan:"",
+                    curah_hujan_normal:""
+                }])
+            }
+        }
+
+        return curah_hujan
+    }
+
     render(){
-        const {tahun, summary_ews_produksi, banjir, kekeringan, map_curah_hujan, provinsi_form}=this.state
+        const {tahun, map_curah_hujan}=this.state
 
         return (
             <>

@@ -7,6 +7,9 @@ export const BASE_URL=process.env.NODE_ENV==="development"?
     "http://localhost/data-csa/public":
     "https://api.ews.tifpsdku.com";
 
+//windy
+export const WINDY_KEY="HvSDfrRvwQCr6g4WSF5WFBh3zlvWajN8"
+
 //login storage
 export const login_data=()=>{
     const data=localStorage.getItem("login_data")
@@ -157,4 +160,19 @@ export const ceil_with_enclosure=(number, enclosure=0.5)=>{
 export const random_rgba=()=>{
     var o = Math.round, r = Math.random, s = 255;
     return 'rgba(' + o(r()*s) + ',' + o(r()*s) + ',' + o(r()*s) + ',1)';
+}
+export function readFile(fileRes){
+    return new Promise((resolve, reject)=>{
+        const reader=new FileReader()
+        reader.readAsArrayBuffer(fileRes)
+        reader.onload=()=>{
+            resolve(reader.result)
+        }
+    })
+}
+export const isNull=(v)=>{
+    if(v===null) return true
+    if(v.toString().trim()=="") return true
+    
+    return false
 }

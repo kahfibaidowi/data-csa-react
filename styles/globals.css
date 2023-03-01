@@ -140,3 +140,15 @@ thead.no-display{
   block-size: 1px;
   inline-size: 15px;
 }
+
+/* DROPDOWN */
+.dropdown .dropdown-toggle::after{
+    display: none;
+}
+
+/* LEAFLET */
+.leaflet-tooltip.tooltip-region {
+    background-color: transparent !important;
+    border: transparent !important;
+    box-shadow: none !important;
+}

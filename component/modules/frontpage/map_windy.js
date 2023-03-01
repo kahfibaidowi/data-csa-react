@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react"
-import { isUndefined, mapbox_access_token } from "../../../config/config"
-import { Map, LayersControl, TileLayer, Marker, Popup, GeoJSON, useLeaflet } from "react-windy-leaflet"
+import update from "immutability-helper"
+import { isUndefined, mapbox_access_token, WINDY_KEY } from "../../../config/config"
+import { Map, LayersControl, TileLayer, Marker, Popup, GeoJSON, useLeaflet, useMapZoom, Tooltip } from "react-windy-leaflet"
 import L from 'leaflet'
 import CreatableSelect from "react-select/creatable"
 
@@ -14,6 +15,7 @@ const MapWindy=(props)=>{
         longitude:116.253,
         zoom:5
     })
+    const mapRef=useRef(null)
 
     //helpers
     const month=[
@@ -105,7 +107,7 @@ const MapWindy=(props)=>{
             weight:1,
             opacity:1,
             fillColor:color,
-            fillOpacity:.7
+            fillOpacity:.9
         }
     }
     const curahHujan=feature=>{
@@ -121,7 +123,7 @@ const MapWindy=(props)=>{
         else{
             const curah_hujan=feature.properties.curah_hujan
 
-            let ch="", curah_hujan_normal=""
+            let ch="", curah_hujan_normal="", count_curah_hujan=0
             for(var i=0; i<curah_hujan.length; i++){
                 if(curah_hujan[i].curah_hujan.toString().trim()!=""){
                     if(ch==""){
@@ -132,12 +134,13 @@ const MapWindy=(props)=>{
                         ch+=Number(curah_hujan[i].curah_hujan)
                         curah_hujan_normal+=Number(curah_hujan[i].curah_hujan_normal)
                     }
+                    count_curah_hujan++
                 }
             }
 
             return {
-                curah_hujan:ch,
-                curah_hujan_normal:curah_hujan_normal
+                curah_hujan:ch!=""?(ch/count_curah_hujan):ch,
+                curah_hujan_normal:ch!=""?(curah_hujan_normal/count_curah_hujan):curah_hujan_normal
             }
         }
     }
@@ -199,7 +202,7 @@ const MapWindy=(props)=>{
         if(value<=2){
             return "<div class='d-flex'><div class='d-flex mx-1' style='width:25px;height:15px;background:#238129'></div> (151 - 200%) Atas Normal</div>";
         }
-        if(value>200){
+        if(value>2){
             return "<div class='d-flex'><div class='d-flex mx-1' style='width:25px;height:15px;background:#00460e'></div> (> 200%) Atas Normal</div>";
         }
     }
@@ -250,10 +253,10 @@ const MapWindy=(props)=>{
                     </div>
                 </div>
             </div>
-
             <Map
+                ref={(ref)=>mapRef.current=ref}
                 className={!isUndefined(props.className)?props.className:"map-responsive"}
-                windyKey={"HvSDfrRvwQCr6g4WSF5WFBh3zlvWajN8"}
+                windyKey={WINDY_KEY}
                 windyLabels={false}
                 windyControls={false}
                 overlay="wind"
@@ -262,6 +265,11 @@ const MapWindy=(props)=>{
                 zoom={center.zoom}
                 center={[center.latitude, center.longitude]}
                 removeWindyLayers
+                onzoomend={()=>{
+                    setCenter(update(center, {
+                        zoom:{$set:mapRef.current.leafletElement.getZoom()}
+                    }))
+                }}
                 mapElements={
                     <React.Fragment>
                         <LayersControl>
@@ -272,26 +280,33 @@ const MapWindy=(props)=>{
                                 />
                             </BaseLayer>
                         </LayersControl>
+                        {props.data.map(df=>{
+                            const curah_hujan=curahHujan(df)
 
-                        <GeoJSON 
-                            key={Date.now()} 
-                            data={props.data} 
+                            return (
+                                <GeoJSON
+                                    key={Date.now()+Math.random()}
+                                    data={df}
+                                    style={mapStyle(df)}
+                                >
+                                    {(center.zoom>=8)&&<Tooltip direction="center" className="tooltip-region" permanent>{df.properties.region}</Tooltip>}
+                                    <Popup>
+                                        <div class='d-flex flex-column'>
+                                            <span>Kabupaten/Kota : <strong>{df.properties.region}</strong></span>
+                                            <span>Curah Hujan : <strong>{curah_hujan.curah_hujan}</strong></span>
+                                            <span>Curah Hujan Normal : <strong>{curah_hujan.curah_hujan_normal}</strong></span>
+                                            <span class='d-flex'>Sifat Hujan : <strong dangerouslySetInnerHTML={{__html:sifatHujan(curah_hujan.curah_hujan, curah_hujan.curah_hujan_normal)}}></strong></span>
+                                            <span class='d-flex'>Sifat Bulan : <strong>{sifatBulan(curah_hujan.curah_hujan)}</strong></span>
+                                        </div>
+                                    </Popup>
+                                </GeoJSON>
+                            )
+                        })}
+                        {/* <GeoJSON
+                            key={Date.now()+Math.random()}
+                            data={props.data}
                             style={mapStyle}
-                            onEachFeature={(feature, layer)=>{
-                                const curah_hujan=curahHujan(feature)
-
-                                let popupContent=`
-                                    <div class='d-flex flex-column'>
-                                        <span>Kecamatan : <strong>${feature.properties.region}</strong></span>
-                                        <span>Curah Hujan : <strong>${curah_hujan.curah_hujan}</strong></span>
-                                        <span>Curah Hujan Normal : <strong>${curah_hujan.curah_hujan_normal}</strong></span>
-                                        <span class='d-flex'>Sifat Hujan : <strong>${sifatHujan(curah_hujan.curah_hujan, curah_hujan.curah_hujan_normal)}</strong></span>
-                                        <span class='d-flex'>Sifat Bulan : <strong>${sifatBulan(curah_hujan.curah_hujan)}</strong></span>
-                                    </div>
-                                `
-                                layer.bindPopup(popupContent)
-                            }}
-                        />
+                        /> */}
                     </React.Fragment>
                 }
             />

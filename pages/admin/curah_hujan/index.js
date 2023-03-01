@@ -5,12 +5,12 @@ import Layout from "../../../component/layout"
 import withAuth from "../../../component/hoc/auth"
 import { Query, useMutation, useQuery, useQueryClient } from "react-query"
 import { api } from "../../../config/api"
-import { access_token, isUndefined } from "../../../config/config"
+import { access_token, isNull, isUndefined, readFile } from "../../../config/config"
 import { toast } from "react-toastify"
 import Router from "next/router"
-import { FiChevronDown, FiChevronLeft, FiChevronRight, FiChevronUp, FiDownload, FiEdit, FiExternalLink, FiPlus, FiTrash, FiTrash2, FiUpload, FiX } from "react-icons/fi"
+import { FiChevronDown, FiChevronLeft, FiChevronRight, FiChevronUp, FiDownload, FiEdit, FiExternalLink, FiMoreVertical, FiPlus, FiTrash, FiTrash2, FiUpload, FiX } from "react-icons/fi"
 import Avatar from "../../../component/ui/avatar"
-import { Modal, Spinner } from "react-bootstrap"
+import { Dropdown, Modal, Spinner } from "react-bootstrap"
 import swal from "sweetalert2"
 import withReactContent from 'sweetalert2-react-content'
 import Select from 'react-select'
@@ -22,8 +22,13 @@ import NumberFormat from "react-number-format"
 import VirtualTable, { VirtualTableContext } from "../../../component/ui/virtual_table"
 import BaseTable, {AutoResizer, Column} from "react-base-table"
 import DataGrid from 'react-data-grid'
+import { read, utils, writeFile } from "xlsx"
+import * as ExcelJS from "exceljs"
+import { arrayMonths, sheetColumn } from "../../../config/helpers"
+import FileSaver from "file-saver"
 
 
+//MAIN
 class CurahHujan extends React.Component{
     state={
         kabupaten_kota_form:[],
@@ -41,114 +46,44 @@ class CurahHujan extends React.Component{
         edit_curah_hujan:{
             is_open:false,
             curah_hujan:{}
+        },
+        download_template:{
+            is_open:false
+        },
+        import_template:{
+            is_open:false,
+            data:{
+                template:[],
+                imported:[]
+            },
+            is_submitting:false
         }
     }
 
-    componentDidMount=()=>{
-        this.fetchPulauForm()
-    }
 
-    //REQUEST, QUERY, MUTATION
-    abortController=new AbortController()
+    //REQUEST DATA
+    abortGetsCurahHujan=new AbortController()
     request={
-        apiGetsPulauForm:async()=>{
-            return await api(access_token()).get("/region/type/pulau", {
-                params:{
-                    per_page:"",
-                    page:1,
-                    q:""
-                }
-            })
-            .then(res=>res.data)
-        },
-        apiGetsProvinsiForm:async(pulau)=>{
-            return await api(access_token()).get("/region/type/provinsi", {
-                params:{
-                    per_page:"",
-                    page:1,
-                    q:"",
-                    pulau:pulau
-                },
-            })
-            .then(res=>res.data)
-        },
-        apiGetsKabupatenKotaForm:async(provinsi)=>{
-            return await api(access_token()).get("/region/type/kabupaten_kota", {
-                params:{
-                    per_page:"",
-                    page:1,
-                    q:"",
-                    province_id:provinsi
-                },
-            })
-            .then(res=>res.data)
-        },
         apiGetsCurahHujan:async(params)=>{
-            this.abortController.abort()
-            this.abortController=new AbortController()
+            this.abortGetsCurahHujan.abort()
+            this.abortGetsCurahHujan=new AbortController()
             
             return await api(access_token()).get("/curah_hujan/type/treeview", {
                 params:{
                     tahun:params.tahun
                 },
-                signal:this.abortController.signal
+                signal:this.abortGetsCurahHujan.signal
             })
             .then(res=>res.data)
         },
         apiUpdateCurahHujan:async(params)=>{
             return await api(access_token()).post('/curah_hujan', params).then(res=>res.data)
+        },
+        apiUpdateCurahHujanMultiple:async(params)=>{
+            return await api(access_token()).post("/curah_hujan/type/multiple", params).then(res=>res.data)
         }
     }
-    //--data
-    fetchPulauForm=async()=>{
-        await this.request.apiGetsPulauForm()
-        .then(data=>{
-            this.setState({
-                pulau_form:data.data
-            })
-        })
-        .catch(err=>{
-            if(err.response.status===401){
-                localStorage.removeItem("login_data")
-                Router.push("/login")
-            }
-            toast.error("Gets Data Failed!", {position:"bottom-center"})
-        })
-    }
-    fetchProvinsiForm=async()=>{
-        const {curah_hujan}=this.state
 
-        await this.request.apiGetsProvinsiForm(curah_hujan.pulau)
-        .then(data=>{
-            this.setState({
-                provinsi_form:data.data
-            })
-        })
-        .catch(err=>{
-            if(err.response.status===401){
-                localStorage.removeItem("login_data")
-                Router.push("/login")
-            }
-            toast.error("Gets Data Failed!", {position:"bottom-center"})
-        })
-    }
-    fetchKabupatenKotaForm=async()=>{
-        const {curah_hujan}=this.state
-
-        await this.request.apiGetsKabupatenKotaForm(curah_hujan.province_id)
-        .then(data=>{
-            this.setState({
-                kabupaten_kota_form:data.data
-            })
-        })
-        .catch(err=>{
-            if(err.response.status===401){
-                localStorage.removeItem("login_data")
-                Router.push("/login")
-            }
-            toast.error("Gets Data Failed!", {position:"bottom-center"})
-        })
-    }
     fetchCurahHujan=async()=>{
         const {data, ...params}=this.state.curah_hujan
 
@@ -202,7 +137,7 @@ class CurahHujan extends React.Component{
                     expanded:false
                 })
             })
-
+            
             this.setState({
                 curah_hujan:update(this.state.curah_hujan, {
                     data:{$set:new_data},
@@ -260,6 +195,219 @@ class CurahHujan extends React.Component{
                 toast.error("Update Data Failed! ", {position:"bottom-center"})
         })
     }
+    downloadTemplate=async(values, actions)=>{
+        const {curah_hujan}=this.state
+
+        actions.setSubmitting(true)
+
+        let months=[]
+        let rows_merge=[]
+        let months_merge=[]
+        arrayMonths.map((month, idx)=>{
+            for(var i=1; i<=3; i++){
+                months=months.concat([month.toString().trim()+" "+i])
+            }
+        })
+
+        let aoa_curah_hujan=[
+            [
+                "district_id(dont edit)",
+                "Provinsi",
+                "Kabupaten/Kota",
+                "Kecamatan",
+                "Parameter",
+                ...months
+            ]
+        ]
+        
+        let row=0;
+        for(var i=0; i<curah_hujan.data.length; i++){
+            if(values.pulau.toString().trim()!="" && curah_hujan.data[i].data.pulau.toString().trim()!=values.pulau.toString().trim()){
+                continue
+            }
+            if(values.province_id.toString().trim()!="" && curah_hujan.data[i].id_region.toString().trim()!=values.province_id.toString().trim()){
+                continue
+            }
+
+            for(var j=0; j<curah_hujan.data[i].kabupaten_kota.length; j++){
+                if(values.regency_id.toString().trim()!="" && curah_hujan.data[i].kabupaten_kota[j].id_region.toString().trim()!=values.regency_id.toString().trim()){
+                    continue
+                }
+
+                for(var k=0; k<curah_hujan.data[i].kabupaten_kota[j].kecamatan.length; k++){
+                    aoa_curah_hujan=aoa_curah_hujan.concat([
+                        [
+                            curah_hujan.data[i].kabupaten_kota[j].kecamatan[k].id_region,
+                            curah_hujan.data[i].region.toString().trim(),
+                            curah_hujan.data[i].kabupaten_kota[j].region.toString().trim(),
+                            curah_hujan.data[i].kabupaten_kota[j].kecamatan[k].region.toString().trim(),
+                            "CH Prediksi",
+                            ...Array.apply(null, Array(36)).map(String.prototype.valueOf, "")
+                        ],
+                        [
+                            "",
+                            "",
+                            "",
+                            "",
+                            "CH Normal",
+                            ...Array.apply(null, Array(36)).map(String.prototype.valueOf, "")
+                        ]
+                    ])
+
+                    rows_merge=rows_merge.concat([
+                        {s:{r:row*2+2, c:1}, e:{r:row*2+3, c:1}}
+                    ])
+                    row++
+                }
+            }
+        }
+        
+        const workBook=new ExcelJS.Workbook()
+        const workSheet1=workBook.addWorksheet("Sheet 1")
+        workSheet1.addRows(aoa_curah_hujan)
+        rows_merge.map(rm=>{
+            workSheet1.mergeCells(`${sheetColumn(rm.s.c)}${rm.s.r}`, `${sheetColumn(rm.e.c)}${rm.e.r}`)
+            workSheet1.mergeCells(`${sheetColumn(rm.s.c+1)}${rm.s.r}`, `${sheetColumn(rm.e.c+1)}${rm.e.r}`)
+            workSheet1.mergeCells(`${sheetColumn(rm.s.c+2)}${rm.s.r}`, `${sheetColumn(rm.e.c+2)}${rm.e.r}`)
+            workSheet1.mergeCells(`${sheetColumn(rm.s.c+3)}${rm.s.r}`, `${sheetColumn(rm.e.c+3)}${rm.e.r}`)
+        })
+        workSheet1.getColumn(1).hidden=true
+        workSheet1.getRow(1).alignment={vertical:"middle"}
+        workSheet1.getRow(1).font={bold:true}
+        workSheet1.views=[
+            {state:"frozen", ySplit:1, xSplit:5}
+        ]
+
+
+        await workBook.xlsx.writeBuffer()
+        .then((data)=>{
+            let today=new Date()
+            let date=today.getFullYear()+
+                (today.getMonth()+1).toString().padStart(2, "0")+
+                today.getDate().toString().padStart(2, "0")+
+                today.getHours().toString().padStart(2, "0")+
+                today.getMinutes().toString().padStart(2, "0")+
+                today.getSeconds().toString().padStart(2, "0")
+
+            FileSaver.saveAs(new Blob([data]), date+"__template__curah-hujan.xlsx")
+
+            this.toggleModalDownloadTemplate()
+            actions.setSubmitting(false)
+        })
+        .catch(err => {
+            toast.error("Failed to create generated spreadsheet!", {position:"bottom-center"})
+            actions.setSubmitting(false)
+        })
+    }
+    generateImportedExcel=async(file)=>{
+        const {curah_hujan}=this.state
+
+        if(curah_hujan.tahun.toString().trim()==""){
+            toast.warn("Pilih tahun terlebih dahulu!", {position:"bottom-center"})
+            return
+        }
+
+        const workBook=new ExcelJS.Workbook()
+        const buffer=await readFile(file)
+
+        const file_excel=await workBook.xlsx.load(buffer)
+        const workSheet=file_excel.getWorksheet(1)
+
+        let data_excel=[]
+        let imported=[]
+        let start_col=6
+
+        workSheet.eachRow((row, row_num)=>{
+            if(row_num>1){
+                if(row_num%2==0 && !isNull(row.getCell(1).value)){
+                    let found_ch=false
+                    let col_ch=[]
+
+                    for(var i=start_col; i<=41; i++){
+                        col_ch=col_ch.concat([
+                            {
+                                ch_prediksi:row.getCell(i).value,
+                                ch_normal:workSheet.getRow(row_num+1).getCell(i).value
+                            }
+                        ])
+
+                        if(!isNull(row.getCell(i).value) || !isNull(workSheet.getRow(row_num+1).getCell(i).value)){
+                            found_ch=true
+                        }
+
+                        if(!isNull(row.getCell(i).value) && !isNull(workSheet.getRow(row_num+1).getCell(i).value)){
+                            imported=imported.concat([
+                                {
+                                    id_region:row.getCell(1).value,
+                                    tahun:curah_hujan.tahun,
+                                    bulan:Math.floor((i-start_col)/3)+1,
+                                    input_ke:((i-start_col)%3)+1,
+                                    curah_hujan:row.getCell(i).value,
+                                    curah_hujan_normal:workSheet.getRow(row_num+1).getCell(i).value
+                                }
+                            ])
+                        }
+                    }
+
+                    if(found_ch){
+                        data_excel=data_excel.concat([
+                            {
+                                id_region:row.getCell(1).value,
+                                provinsi:row.getCell(2).value,
+                                kabupaten_kota:row.getCell(3).value,
+                                kecamatan:row.getCell(4).value,
+                                curah_hujan:col_ch
+                            }
+                        ])
+                    }
+                }
+            }
+        })
+
+        this.setState({
+            import_template:{
+                is_open:true,
+                data:{
+                    template:data_excel,
+                    imported:imported
+                },
+                is_submitting:false
+            }
+        })
+    }
+    updateCurahHujanMultiple=async()=>{
+        const {curah_hujan, import_template}=this.state
+        this.setState({
+            import_template:update(this.state.import_template, {
+                is_submitting:{$set:true}
+            })
+        })
+
+        await this.request.apiUpdateCurahHujanMultiple({
+            tahun:curah_hujan.tahun,
+            data:import_template.data.imported
+        })
+        .then(data=>{
+            this.fetchCurahHujan()
+            this.hideModalImportTemplate()
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            this.setState({
+                import_template:update(this.state.import_template, {
+                    is_submitting:{$set:false}
+                })
+            })
+            
+            if(err.response.data?.error=="VALIDATION_ERROR")
+                toast.error(err.response.data.data, {position:"bottom-center"})
+            else
+                toast.error("Import Data Failed! ", {position:"bottom-center"})
+        })
+    }
 
     //DATA
     months_year=()=>{
@@ -289,30 +437,11 @@ class CurahHujan extends React.Component{
                 case "tahun":
                     this.fetchCurahHujan()
                 break
-                case "province_id":
-                    this.setState({
-                        kabupaten_kota_form:[],
-                        curah_hujan:update(this.state.curah_hujan, {
-                            regency_id:{$set:""}
-                        })
-                    }, ()=>{
-                        this.fetchKabupatenKotaForm()
-                    })
-                break
-                case "pulau":
-                    this.setState({
-                        curah_hujan:update(this.state.curah_hujan, {
-                            province_id:{$set:""},
-                            regency_id:{$set:""}
-                        }),
-                        kabupaten_kota_form:[],
-                        provinsi_form:[]
-                    }, ()=>{
-                        this.fetchProvinsiForm()
-                    })
-                break
             }
         })
+    }
+    setCurahHujan=(curah_hujan, afterSet=()=>{})=>{
+        this.setState({curah_hujan:curah_hujan}, afterSet)
     }
     setData=data=>{
         this.setState({
@@ -335,35 +464,73 @@ class CurahHujan extends React.Component{
             }
         })
     }
+    toggleModalDownloadTemplate=(is_open=false)=>{
+        const {curah_hujan}=this.state
+
+        if(curah_hujan.tahun.toString().trim()==""){
+            toast.warn("Pilih tahun terlebih dahulu!", {position:"bottom-center"})
+            return
+        }
+        if(curah_hujan.data.length==0 || curah_hujan.data.is_loading){
+            toast.warn("Data Kecamatan tidak ditemukan!", {position:"bottom-center"})
+            return
+        }
+
+        this.setState({
+            download_template:{
+                is_open:is_open
+            }
+        })
+    }
+    hideModalImportTemplate=()=>{
+        this.setState({
+            import_template:update(this.state.import_template, {
+                is_open:{$set:false},
+                is_submitting:{$set:false}
+            })
+        }, ()=>{
+            setTimeout(() => {
+                this.setState({
+                    import_template:{
+                        is_open:false,
+                        data:{
+                            template:[],
+                            imported:[]
+                        }
+                    }
+                })
+            }, 150);
+        })
+    }
 
 
     //RENDER
     render(){
-        const {curah_hujan, edit_curah_hujan, provinsi_form, pulau_form, kabupaten_kota_form}=this.state
+        const {curah_hujan, edit_curah_hujan, download_template, import_template}=this.state
 
         return (
             <>
                 <Layout>
-                    <div class="d-flex justify-content-between align-items-center flex-wrap grid-margin">
+                    <div className="d-flex justify-content-between align-items-center flex-wrap grid-margin">
                         <div>
-                            <h4 class="mb-3 mb-md-0">Data Curah Hujan</h4>
+                            <h4 className="mb-3 mb-md-0">Data Curah Hujan</h4>
                         </div>
-                        <div class="d-flex align-items-center flex-wrap text-nowrap">
+                        <div className="d-flex align-items-center flex-wrap text-nowrap">
                         </div>
                     </div>
                     <div className="row">
                         <div className="col-12">
-                            <div class="card">
-                                <div class="card-body">
+                            <div className="card">
+                                <div className="card-body">
                                     <Table 
                                         data={curah_hujan} 
                                         typeFilter={this.typeFilter}
                                         setData={this.setData}
+                                        setCurahHujan={this.setCurahHujan}
                                         toggleModalEdit={this.toggleModalEdit}
+                                        toggleModalDownloadTemplate={this.toggleModalDownloadTemplate}
+                                        generateImportedExcel={this.generateImportedExcel}
                                         months_year={this.months_year}
-                                        provinsi_form={provinsi_form}
-                                        pulau_form={pulau_form}
-                                        kabupaten_kota_form={kabupaten_kota_form}
                                     />
                                 </div>
                             </div>
@@ -375,15 +542,110 @@ class CurahHujan extends React.Component{
                     data={edit_curah_hujan}
                     toggleModalEdit={this.toggleModalEdit}
                     updateCurahHujan={this.updateCurahHujan}
-                    request={this.request}
+                />
+
+                <ModalDownloadTemplate
+                    data={download_template}
+                    downloadTemplate={this.downloadTemplate}
+                    onHide={this.toggleModalDownloadTemplate}
+                />
+
+                <ModalImportTemplate
+                    data={import_template}
+                    onHide={this.hideModalImportTemplate}
+                    importTemplate={this.updateCurahHujanMultiple}
                 />
             </>
         )
     }
 }
 
-const Table=({data, provinsi_form, pulau_form, kabupaten_kota_form, typeFilter, toggleModalEdit, setData})=>{
+//TABLE
+const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleModalDownloadTemplate, generateImportedExcel})=>{
     const [full_screen, setFullScreen]=useState(false)
+    const [pulau_form, setPulauForm]=useState([])
+    const [provinsi_form, setProvinsiForm]=useState([])
+    const [kabupaten_kota_form, setKabupatenKotaForm]=useState([])
+
+    useEffect(()=>{
+        fetchPulauForm()
+    }, [])
+
+    //request data
+    const request={
+        apiGetsPulauForm:async()=>{
+            return await api(access_token()).get("/region/type/pulau", {
+                params:{
+                    per_page:"",
+                    page:1,
+                    q:""
+                }
+            })
+            .then(res=>res.data)
+        },
+        apiGetsProvinsiForm:async(pulau)=>{
+            return await api(access_token()).get("/region/type/provinsi", {
+                params:{
+                    per_page:"",
+                    page:1,
+                    q:"",
+                    pulau:pulau
+                },
+            })
+            .then(res=>res.data)
+        },
+        apiGetsKabupatenKotaForm:async(provinsi)=>{
+            return await api(access_token()).get("/region/type/kabupaten_kota", {
+                params:{
+                    per_page:"",
+                    page:1,
+                    q:"",
+                    province_id:provinsi
+                },
+            })
+            .then(res=>res.data)
+        }
+    }
+    //data
+    const fetchPulauForm=async()=>{
+        await request.apiGetsPulauForm()
+        .then(data=>{
+            setPulauForm(data.data)
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
+    const fetchProvinsiForm=async(pulau)=>{
+        await request.apiGetsProvinsiForm(pulau)
+        .then(data=>{
+            setProvinsiForm(data.data)
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
+    const fetchKabupatenKotaForm=async(province_id)=>{
+        await request.apiGetsKabupatenKotaForm(province_id)
+        .then(data=>{
+            setKabupatenKotaForm(data.data)
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
 
     //options
     const tahun_options=()=>{
@@ -421,7 +683,7 @@ const Table=({data, provinsi_form, pulau_form, kabupaten_kota_form, typeFilter, 
         return data
     }
 
-    //data
+    //generated data
     const data_generated=()=>{
         let new_data=[]
 
@@ -1549,7 +1811,18 @@ const Table=({data, provinsi_form, pulau_form, kabupaten_kota_form, typeFilter, 
                             options={pulau_options()}
                             value={pulau_options().find(f=>f.value==data.pulau)}
                             onChange={e=>{
-                                typeFilter({target:{name:"pulau", value:e.value}})
+                                setCurahHujan(
+                                    update(data, {
+                                        pulau:{$set:e.value},
+                                        province_id:{$set:""},
+                                        regency_id:{$set:""}
+                                    }),
+                                    ()=>{
+                                        setProvinsiForm([])
+                                        setKabupatenKotaForm([])
+                                        fetchProvinsiForm(e.value)
+                                    }
+                                )
                             }}
                             placeholder="Semua Pulau"
                             classNamePrefix="form-select"
@@ -1560,7 +1833,16 @@ const Table=({data, provinsi_form, pulau_form, kabupaten_kota_form, typeFilter, 
                             options={provinsi_options()}
                             value={provinsi_options().find(f=>f.value==data.province_id)}
                             onChange={e=>{
-                                typeFilter({target:{name:"province_id", value:e.value}})
+                                setCurahHujan(
+                                    update(data, {
+                                        province_id:{$set:e.value},
+                                        regency_id:{$set:""}
+                                    }),
+                                    ()=>{
+                                        setKabupatenKotaForm([])
+                                        fetchKabupatenKotaForm(e.value)
+                                    }
+                                )
                             }}
                             placeholder="Semua Provinsi"
                             classNamePrefix="form-select"
@@ -1571,7 +1853,11 @@ const Table=({data, provinsi_form, pulau_form, kabupaten_kota_form, typeFilter, 
                             options={kabupaten_kota_options()}
                             value={kabupaten_kota_options().find(f=>f.value==data.regency_id)}
                             onChange={e=>{
-                                typeFilter({target:{name:"regency_id", value:e.value}})
+                                setCurahHujan(
+                                    update(data, {
+                                        regency_id:{$set:e.value}
+                                    })
+                                )
                             }}
                             placeholder="Semua Kab/Kota"
                             classNamePrefix="form-select"
@@ -1599,12 +1885,39 @@ const Table=({data, provinsi_form, pulau_form, kabupaten_kota_form, typeFilter, 
                             placeholder="Pilih Tahun"
                         />
                     </div>
-                    <button className="btn btn-primary btn-icon" type="button" title="download">
-                        <FiDownload className="icon"/>
-                    </button>
                     <button className="btn btn-light btn-icon ms-1" type="button" onClick={e=>setFullScreen(true)} title="full screen">
                         <FiExternalLink className="icon"/>
                     </button>
+                    <Dropdown align="end">
+                        <Dropdown.Toggle variant="light" className="btn-icon ms-1">
+                            <FiMoreVertical className="icon"/>
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu>
+                            <Dropdown.Item 
+                                href="#/download-template-excel" 
+                                onClick={e=>{
+                                    e.preventDefault()
+                                    toggleModalDownloadTemplate(true)
+                                }}
+                            >
+                                Download Template Excel
+                            </Dropdown.Item>
+                            <label className="w-100">
+                                <Dropdown.Item className="d-block w-100 cursor-pointer" as="span">
+                                    Import dari Template
+                                </Dropdown.Item>
+                                <input
+                                    type="file"
+                                    name="file"
+                                    onChange={e=>{
+                                        generateImportedExcel(e.target.files[0])
+                                    }}
+                                    style={{display:"none"}}
+                                    accept=".xlsx"
+                                />
+                            </label>
+                        </Dropdown.Menu>
+                    </Dropdown>
                 </div>
             </div>
             
@@ -1653,7 +1966,18 @@ const Table=({data, provinsi_form, pulau_form, kabupaten_kota_form, typeFilter, 
                                     options={pulau_options()}
                                     value={pulau_options().find(f=>f.value==data.pulau)}
                                     onChange={e=>{
-                                        typeFilter({target:{name:"pulau", value:e.value}})
+                                        setCurahHujan(
+                                            update(data, {
+                                                pulau:{$set:e.value},
+                                                province_id:{$set:""},
+                                                regency_id:{$set:""}
+                                            }),
+                                            ()=>{
+                                                setProvinsiForm([])
+                                                setKabupatenKotaForm([])
+                                                fetchProvinsiForm(e.value)
+                                            }
+                                        )
                                     }}
                                     placeholder="Semua Pulau"
                                     classNamePrefix="form-select"
@@ -1664,7 +1988,16 @@ const Table=({data, provinsi_form, pulau_form, kabupaten_kota_form, typeFilter, 
                                     options={provinsi_options()}
                                     value={provinsi_options().find(f=>f.value==data.province_id)}
                                     onChange={e=>{
-                                        typeFilter({target:{name:"province_id", value:e.value}})
+                                        setCurahHujan(
+                                            update(data, {
+                                                province_id:{$set:e.value},
+                                                regency_id:{$set:""}
+                                            }),
+                                            ()=>{
+                                                setKabupatenKotaForm([])
+                                                fetchKabupatenKotaForm(e.value)
+                                            }
+                                        )
                                     }}
                                     placeholder="Semua Provinsi"
                                     classNamePrefix="form-select"
@@ -1675,7 +2008,11 @@ const Table=({data, provinsi_form, pulau_form, kabupaten_kota_form, typeFilter, 
                                     options={kabupaten_kota_options()}
                                     value={kabupaten_kota_options().find(f=>f.value==data.regency_id)}
                                     onChange={e=>{
-                                        typeFilter({target:{name:"regency_id", value:e.value}})
+                                        setCurahHujan(
+                                            update(data, {
+                                                regency_id:{$set:e.value}
+                                            })
+                                        )
                                     }}
                                     placeholder="Semua Kab/Kota"
                                     classNamePrefix="form-select"
@@ -1703,12 +2040,39 @@ const Table=({data, provinsi_form, pulau_form, kabupaten_kota_form, typeFilter, 
                                     placeholder="Pilih Tahun"
                                 />
                             </div>
-                            <button className="btn btn-primary btn-icon" type="button" title="download">
-                                <FiDownload className="icon"/>
-                            </button>
-                            <button className="btn btn-light btn-icon ms-1" type="button" onClick={e=>setFullScreen(false)} title="full screen">
+                            <button className="btn btn-light btn-icon ms-1" type="button" onClick={e=>setFullScreen(false)} title="close full screen">
                                 <FiX className="icon"/>
                             </button>
+                            <Dropdown align="end">
+                                <Dropdown.Toggle variant="light" className="btn-icon ms-1">
+                                    <FiMoreVertical className="icon"/>
+                                </Dropdown.Toggle>
+                                <Dropdown.Menu>
+                                    <Dropdown.Item 
+                                        href="#/download-template-excel" 
+                                        onClick={e=>{
+                                            e.preventDefault()
+                                            toggleModalDownloadTemplate(true)
+                                        }}
+                                    >
+                                        Download Template Excel
+                                    </Dropdown.Item>
+                                    <label className="w-100">
+                                        <Dropdown.Item className="d-block w-100 cursor-pointer" as="span">
+                                            Import dari Template
+                                        </Dropdown.Item>
+                                        <input
+                                            type="file"
+                                            name="file"
+                                            onChange={e=>{
+                                                generateImportedExcel(e.target.files[0])
+                                            }}
+                                            style={{display:"none"}}
+                                            accept=".xlsx"
+                                        />
+                                    </label>
+                                </Dropdown.Menu>
+                            </Dropdown>
                         </div>
                     </div>
                 </Modal.Header>
@@ -1756,7 +2120,380 @@ const Table=({data, provinsi_form, pulau_form, kabupaten_kota_form, typeFilter, 
     )
 }
 
-const ModalEdit=({data, toggleModalEdit, updateCurahHujan, request})=>{
+//DOWNLOAD TEMPLATE
+const ModalDownloadTemplate=({data, downloadTemplate, onHide})=>{
+    const [pulau_form, setPulauForm]=useState([])
+    const [provinsi_form, setProvinsiForm]=useState([])
+    const [kabupaten_kota_form, setKabupatenKotaForm]=useState([])
+
+    useEffect(()=>{
+        if(data.is_open){
+            fetchPulauForm()
+            setProvinsiForm([])
+            setKabupatenKotaForm([])
+        }
+    }, [data])
+
+    //request data
+    const request={
+        apiGetsPulauForm:async()=>{
+            return await api(access_token()).get("/region/type/pulau", {
+                params:{
+                    per_page:"",
+                    page:1,
+                    q:""
+                }
+            })
+            .then(res=>res.data)
+        },
+        apiGetsProvinsiForm:async(pulau)=>{
+            return await api(access_token()).get("/region/type/provinsi", {
+                params:{
+                    per_page:"",
+                    page:1,
+                    q:"",
+                    pulau:pulau
+                },
+            })
+            .then(res=>res.data)
+        },
+        apiGetsKabupatenKotaForm:async(provinsi)=>{
+            return await api(access_token()).get("/region/type/kabupaten_kota", {
+                params:{
+                    per_page:"",
+                    page:1,
+                    q:"",
+                    province_id:provinsi
+                },
+            })
+            .then(res=>res.data)
+        }
+    }
+    //data
+    const fetchPulauForm=async()=>{
+        await request.apiGetsPulauForm()
+        .then(data=>{
+            setPulauForm(data.data)
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
+    const fetchProvinsiForm=async(pulau)=>{
+        await request.apiGetsProvinsiForm(pulau)
+        .then(data=>{
+            setProvinsiForm(data.data)
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
+    const fetchKabupatenKotaForm=async(province_id)=>{
+        await request.apiGetsKabupatenKotaForm(province_id)
+        .then(data=>{
+            setKabupatenKotaForm(data.data)
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
+    
+    //options
+    const kabupaten_kota_options=()=>{
+        let data=kabupaten_kota_form.map(op=>{
+            return {label:op.region, value:op.id_region}
+        })
+        data=[{label:"Semua Kab/Kota", value:""}].concat(data)
+
+        return data
+    }
+    const provinsi_options=()=>{
+        let data=provinsi_form.map(op=>{
+            return {label:op.region, value:op.id_region}
+        })
+        data=[{label:"Semua Provinsi", value:""}].concat(data)
+
+        return data
+    }
+    const pulau_options=()=>{
+        let data=pulau_form.map(p=>{
+            return {label:p.pulau, value:p.pulau}
+        })
+        data=[{label:"Semua Pulau", value:""}].concat(data)
+
+        return data
+    }
+
+    return (
+        <Modal 
+            show={data.is_open} 
+            onHide={onHide} 
+            backdrop="static" 
+            size="sm" 
+            className="modal-nested"
+            backdropClassName="backdrop-nested"
+            scrollable
+        >
+            <Formik
+                initialValues={{
+                    pulau:"",
+                    province_id:"",
+                    regency_id:""
+                }}
+                onSubmit={downloadTemplate}
+                validationSchema={
+                    yup.object().shape({
+                        pulau:yup.string().optional(),
+                        province_id:yup.string().optional(),
+                        regency_id:yup.string().optional()
+                    })
+                }
+            >
+                {formik=>(
+                    <form onSubmit={formik.handleSubmit}>
+                        <Modal.Header closeButton>
+                            <h4 className="modal-title">Download Template Excel</h4>
+                        </Modal.Header>
+                        <Modal.Body>
+                            <div className="mb-2">
+                                <label className="my-1 me-2">Pulau</label>
+                                <Select
+                                    options={pulau_options()}
+                                    value={pulau_options().find(f=>f.value==formik.values.pulau)}
+                                    onChange={e=>{
+                                        setProvinsiForm([])
+                                        setKabupatenKotaForm([])
+                                        fetchProvinsiForm(e.value)
+                                        formik.setFieldValue("pulau", e.value)
+                                    }}
+                                    placeholder="Semua Pulau"
+                                    classNamePrefix="form-select"
+                                    menuPortalTarget={document.body}
+                                    styles={{
+                                        menuPortal:base=>({
+                                           ...base,
+                                           zIndex: 999999
+                                        })
+                                    }}
+                                />
+                            </div>
+                            <div className="mb-2">
+                                <label className="my-1 me-2">Provinsi</label>
+                                <Select
+                                    options={provinsi_options()}
+                                    value={provinsi_options().find(f=>f.value==formik.values.province_id)}
+                                    onChange={e=>{
+                                        setKabupatenKotaForm([])
+                                        fetchKabupatenKotaForm(e.value)
+                                        formik.setFieldValue("province_id", e.value)
+                                    }}
+                                    placeholder="Semua Provinsi"
+                                    classNamePrefix="form-select"
+                                    menuPortalTarget={document.body}
+                                    styles={{
+                                        menuPortal:base=>({
+                                           ...base,
+                                           zIndex: 999999
+                                        })
+                                    }}
+                                />
+                            </div>
+                            <div className="mb-2">
+                                <label className="my-1 me-2">Kabupaten/Kota</label>
+                                <Select
+                                    options={kabupaten_kota_options()}
+                                    value={kabupaten_kota_options().find(f=>f.value==formik.values.regency_id)}
+                                    onChange={e=>{
+                                        formik.setFieldValue("regency_id", e.value)
+                                    }}
+                                    placeholder="Semua Kabupaten/kota"
+                                    classNamePrefix="form-select"
+                                    menuPortalTarget={document.body}
+                                    styles={{
+                                        menuPortal:base=>({
+                                           ...base,
+                                           zIndex: 999999
+                                        })
+                                    }}
+                                />
+                            </div>
+                            <div className="mt-4">
+                                <span className="form-text">*CH Prediksi dan CH Normal harus diisi di baris kolom yg dipilih, jika tidak diisi atau salah satu diisi maka akan diabaikan!</span>
+                            </div>
+                        </Modal.Body>
+                        <Modal.Footer className="mt-3 border-top pt-2">
+                            <button 
+                                type="button" 
+                                className="btn btn-link text-gray me-auto" 
+                                onClick={(e)=>onHide()}
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="submit" 
+                                className="btn btn-primary btn-icon-text"
+                                disabled={formik.isSubmitting||!(formik.isValid)}
+                            >
+                                <FiDownload className="btn-icon-prepend"/>
+                                Download
+                            </button>
+                        </Modal.Footer>
+                    </form>
+                )}
+            </Formik>
+        </Modal>
+    )
+}
+
+//IMPORT TEMPLATE
+const ModalImportTemplate=({data, onHide, importTemplate})=>{
+    const input_generated=()=>{
+        let months=[]
+        arrayMonths.map((month, idx_month)=>{
+            for(var i=1; i<=3; i++){
+                const input_ke=i
+
+                months=months.concat([
+                    {
+                        key:"month-"+(idx_month+1)+"-"+i.toString(),
+                        name:month+" "+i.toString(),
+                        width:120,
+                        frozen:false,
+                        resizable:true,
+                        formatter:({row})=>{
+                            const index=idx_month*3+(input_ke-1)
+                            const decoration=(!isNull(row.curah_hujan[index].ch_prediksi)&&!isNull(row.curah_hujan[index].ch_normal))?"none":"line-through"
+
+                            return (
+                                <>
+                                    {(!isNull(row.curah_hujan[index].ch_prediksi)||!isNull(row.curah_hujan[index].ch_normal))&&
+                                        <span style={{textDecoration:decoration}}>
+                                            {!isNull(row.curah_hujan[index].ch_prediksi)?
+                                                row.curah_hujan[index].ch_prediksi
+                                            :
+                                                "?"
+                                            }
+                                            , 
+                                            {!isNull(row.curah_hujan[index].ch_normal)?
+                                                row.curah_hujan[index].ch_normal
+                                            :
+                                                "?"
+                                            }
+                                        </span>
+                                    }
+                                </>
+                                
+                            )
+                        }
+                    }
+                ])
+            }
+        })
+
+        return months
+    }
+    const columns=[
+        {
+            key:'ID',
+            name:'ID',
+            width: 30,
+            frozen: true,
+            formatter:({row})=>{
+                return <span>{row.id_region}</span>
+            }
+        },
+        {
+            key: 'provinsi',
+            name: 'Provinsi',
+            width: 180,
+            resizable: true,
+            frozen: true,
+            formatter:({row})=>{
+                return <span>{row.provinsi}</span>
+            }
+        },
+        {
+            key: 'kabupaten_kota',
+            name: 'Kabupaten/Kota',
+            width: 180,
+            resizable: true,
+            frozen: true,
+            formatter:({row})=>{
+                return <span>{row.kabupaten_kota}</span>
+            }
+        },
+        {
+            key: 'kecamatan',
+            name: 'Kecamatan',
+            width: 180,
+            resizable: true,
+            frozen: true,
+            formatter:({row})=>{
+                return <span>{row.kecamatan}</span>
+            }
+        },
+        ...input_generated()
+    ]
+
+    return (
+        <Modal 
+            show={data.is_open} 
+            onHide={onHide} 
+            backdrop="static" 
+            size="xl" 
+            className="modal-nested"
+            backdropClassName="backdrop-nested"
+        >
+            <Modal.Header closeButton>
+                <h4 className="modal-title">Preview Import Excel (CH Prediksi, CH Normal)</h4>
+            </Modal.Header>
+            <Modal.Body className="p-0">
+                <DataGrid
+                    rows={data.data.template}
+                    columns={columns}
+                    className={classNames("rdg-light","fill-grid")}
+                    rowHeight={25}
+                    headerRowHeight={40}
+                    style={{height:"300px"}}
+                    renderers
+                />
+            </Modal.Body>
+            <Modal.Footer className="border-top pt-2">
+                <button 
+                    type="button" 
+                    className="btn btn-link text-gray me-auto" 
+                    onClick={(e)=>onHide()}
+                >
+                    Batal
+                </button>
+                <button 
+                    type="button" 
+                    className="btn btn-primary btn-icon-text"
+                    onClick={importTemplate}
+                    disabled={data.is_submitting}
+                >
+                    <FiUpload className="btn-icon-prepend"/>
+                    Import Excel
+                </button>
+            </Modal.Footer>
+        </Modal>
+    )
+}
+
+//EDIT EWS
+const ModalEdit=({data, toggleModalEdit, updateCurahHujan})=>{
 
     return (
         <Modal 
