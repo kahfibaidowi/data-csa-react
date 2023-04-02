@@ -4,6 +4,7 @@ import 'react-toastify/dist/ReactToastify.css'
 import 'react-data-grid/lib/styles.css'
 // import 'mapbox-gl/dist/mapbox-gl.css'
 import 'leaflet/dist/leaflet.css'
+import 'react-quill/dist/quill.snow.css'
 import "../styles/globals.css"
 
 import { ToastContainer } from "react-toastify"

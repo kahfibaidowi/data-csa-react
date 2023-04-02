@@ -235,7 +235,7 @@ class Ews extends React.Component{
                     expanded:false
                 })
             })
-            console.log(new_data)
+            
             this.setState({
                 ews:update(this.state.ews, {
                     data:{$set:new_data},

@@ -3,7 +3,7 @@ import Link from "next/link"
 import Router, { useRouter } from "next/router"
 import React, { useEffect, useState } from "react"
 import { Collapse, Dropdown } from "react-bootstrap"
-import {FiChevronDown, FiCloudRain, FiEdit, FiEye, FiHelpCircle, FiHome, FiLogOut, FiMail, FiMapPin, FiMenu, FiSettings, FiTruck, FiUser} from "react-icons/fi"
+import {FiArchive, FiBook, FiChevronDown, FiCloudRain, FiEdit, FiEye, FiHelpCircle, FiHome, FiLayers, FiLogOut, FiMail, FiMapPin, FiMenu, FiSettings, FiTruck, FiUser} from "react-icons/fi"
 import {api} from "../config/api"
 import { access_token, login_data as user_data } from "../config/config"
 import Avatar from "./ui/avatar"
@@ -28,6 +28,15 @@ const Layout=(props)=>{
         }
         if(["/admin/ews/bawang_merah", "/admin/ews/cabai_besar", "/admin/ews/cabai_rawit"].includes(router.pathname)){
             setCollapse("ews")
+        }
+        if(['/admin/frontpage/widget/headline', '/admin/frontpage/widget/feature_column', '/admin/frontpage/widget/feature_row'].includes(router.pathname)){
+            setCollapse("frontpage_widget")
+        }
+        if(['/admin/frontpage/post', '/admin/frontpage/post/add', '/admin/frontpage/post/edit'].includes(router.pathname)){
+            setCollapse("frontpage_post")
+        }
+        if(['/admin/frontpage/footer/about', '/admin/frontpage/footer/menu', '/admin/frontpage/footer/partner'].includes(router.pathname)){
+            setCollapse("frontpage_footer")
         }
     }, [])
 
@@ -241,6 +250,154 @@ const Layout=(props)=>{
                                             <span className="link-title">Users</span>
                                         </Link>
                                     </li>
+                            </>
+                        }
+
+                        {/* FRONTPAGE */}
+                        {login_data.role=="admin"&&
+                            <>
+                                <li className="nav-item nav-category">Frontpage</li>
+                                <li 
+                                    className={classNames(
+                                        "nav-item",
+                                        {"active":active_page=="/admin/frontpage/pengaturan"}
+                                    )}
+                                >
+                                    <Link href="/admin/frontpage/pengaturan" className="nav-link">
+                                        <FiSettings className="link-icon"/>
+                                        <span className="link-title">Pengaturan</span>
+                                    </Link>
+                                </li>
+                                <li 
+                                    className={classNames(
+                                        "nav-item",
+                                        {"active":['/admin/frontpage/widget/headline', '/admin/frontpage/widget/feature_column', '/admin/frontpage/widget/feature_row'].includes(active_page)}
+                                    )}
+                                >
+                                    <a 
+                                        className="nav-link cursor-pointer" 
+                                        onClick={e=>setCollapse(collapse=="frontpage_widget"?"":"frontpage_widget")} 
+                                        aria-expanded={collapse=="frontpage_widget"}
+                                    >
+                                        <FiLayers className="link-icon"/>
+                                        <span className="link-title">Widget</span>
+                                        <FiChevronDown className="link-arrow"/>
+                                    </a>
+                                    <Collapse in={collapse=="frontpage_widget"}>
+                                        <div>
+                                            <ul className="nav sub-menu">
+                                                <li className="nav-item">
+                                                    <Link 
+                                                        href="/admin/frontpage/widget/headline" 
+                                                        className={classNames("nav-link", {"active":active_page=="/admin/frontpage/widget/headline"})}
+                                                    >
+                                                        Headline
+                                                    </Link>
+                                                </li>
+                                                <li className="nav-item">
+                                                    <Link 
+                                                        href="/admin/frontpage/widget/feature_column" 
+                                                        className={classNames("nav-link", {"active":active_page=="/admin/frontpage/widget/feature_column"})}
+                                                    >
+                                                        Fitur Kolom
+                                                    </Link>
+                                                </li>
+                                                <li className="nav-item">
+                                                    <Link 
+                                                        href="/admin/frontpage/widget/feature_row" 
+                                                        className={classNames("nav-link", {"active":active_page=="/admin/frontpage/widget/feature_row"})}
+                                                    >
+                                                        Fitur Baris
+                                                    </Link>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </Collapse>
+                                </li>
+                                <li 
+                                    className={classNames(
+                                        "nav-item",
+                                        {"active":['/admin/frontpage/post', '/admin/frontpage/post/add', '/admin/frontpage/post/edit'].includes(active_page)}
+                                    )}
+                                >
+                                    <a 
+                                        className="nav-link cursor-pointer" 
+                                        onClick={e=>setCollapse(collapse=="frontpage_post"?"":"frontpage_post")} 
+                                        aria-expanded={collapse=="frontpage_post"}
+                                    >
+                                        <FiArchive className="link-icon"/>
+                                        <span className="link-title">Post</span>
+                                        <FiChevronDown className="link-arrow"/>
+                                    </a>
+                                    <Collapse in={collapse=="frontpage_post"}>
+                                        <div>
+                                            <ul className="nav sub-menu">
+                                                <li className="nav-item">
+                                                    <Link 
+                                                        href="/admin/frontpage/post" 
+                                                        className={classNames("nav-link", {"active":active_page=="/admin/frontpage/post"})}
+                                                    >
+                                                        Semua Post
+                                                    </Link>
+                                                </li>
+                                                <li className="nav-item">
+                                                    <Link 
+                                                        href="/admin/frontpage/post/add" 
+                                                        className={classNames("nav-link", {"active":active_page=="/admin/frontpage/post/add"})}
+                                                    >
+                                                        Tambah
+                                                    </Link>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </Collapse>
+                                </li>
+                                <li 
+                                    className={classNames(
+                                        "nav-item",
+                                        {"active":['/admin/frontpage/footer/copyright', '/admin/frontpage/footer/about', '/admin/frontpage/footer/menu', '/admin/frontpage/footer/partner'].includes(active_page)}
+                                    )}
+                                >
+                                    <a 
+                                        className="nav-link cursor-pointer" 
+                                        onClick={e=>setCollapse(collapse=="frontpage_footer"?"":"frontpage_footer")} 
+                                        aria-expanded={collapse=="frontpage_footer"}
+                                    >
+                                        <FiBook className="link-icon"/>
+                                        <span className="link-title">Footer</span>
+                                        <FiChevronDown className="link-arrow"/>
+                                    </a>
+                                    <Collapse in={collapse=="frontpage_footer"}>
+                                        <div>
+                                            <ul className="nav sub-menu">
+                                                <li className="nav-item">
+                                                    <Link 
+                                                        href="/admin/frontpage/footer/about" 
+                                                        className={classNames("nav-link", {"active":active_page=="/admin/frontpage/footer/about"})}
+                                                    >
+                                                        About
+                                                    </Link>
+                                                </li>
+                                                <li className="nav-item">
+                                                    <Link 
+                                                        href="/admin/frontpage/footer/menu" 
+                                                        className={classNames("nav-link", {"active":active_page=="/admin/frontpage/footer/menu"})}
+                                                    >
+                                                        Menu
+                                                    </Link>
+                                                </li>
+                                                <li className="nav-item">
+                                                    <Link 
+                                                        href="/admin/frontpage/footer/partner" 
+                                                        className={classNames("nav-link", {"active":active_page=="/admin/frontpage/footer/partner"})}
+                                                    >
+                                                        Link Partner
+                                                    </Link>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </Collapse>
+                                </li>
                             </>
                         }
                     </ul>

@@ -152,3 +152,8 @@ thead.no-display{
     border: transparent !important;
     box-shadow: none !important;
 }
+
+/* QUILL */
+.editor-quill .ql-editor{
+    min-height: 300px;
+}

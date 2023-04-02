@@ -8,7 +8,7 @@ export default function Avatar({data, size="", quality=100}) {
         if(isUndefined(avatar_url)) avatar=""
         else avatar=avatar_url
 
-        return BASE_URL+"/file/show/"+avatar
+        return BASE_URL+"/storage/"+avatar
     }
 
     return (
