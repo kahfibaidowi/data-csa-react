@@ -3,9 +3,12 @@ import { useCallback, useRef, useState, useEffect } from "react";
 
 
 //url
+export const BASE_PATH=process.env.NODE_ENV=="development"?
+    "/":
+    "/dashboard";
 export const BASE_URL=process.env.NODE_ENV==="development"?
     "http://localhost/data-csa/public":
-    "https://api.ews.tifpsdku.com";
+    "https://ews.tifpsdku.com/api";
 
 //windy
 export const WINDY_KEY="HvSDfrRvwQCr6g4WSF5WFBh3zlvWajN8"

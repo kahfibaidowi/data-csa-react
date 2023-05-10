@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react"
 import { Collapse, Dropdown } from "react-bootstrap"
 import {FiArchive, FiBook, FiChevronDown, FiCloudRain, FiEdit, FiEye, FiHelpCircle, FiHome, FiLayers, FiLogOut, FiMail, FiMapPin, FiMenu, FiSettings, FiTruck, FiUser} from "react-icons/fi"
 import {api} from "../config/api"
-import { access_token, login_data as user_data } from "../config/config"
+import { BASE_PATH, access_token, login_data as user_data } from "../config/config"
 import Avatar from "./ui/avatar"
 import { useTheme } from "../store/theme"
 
@@ -458,7 +458,7 @@ const Layout=(props)=>{
                             type="button"
                             onClick={e=>theme_store.setTheme("light")}
                         >
-                            <img src="/images/light.jpg" alt="light theme"/>
+                            <img src={`${BASE_PATH}/images/light.jpg`} alt="light theme"/>
                         </button>
                     </div>
                 </div>

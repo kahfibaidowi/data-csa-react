@@ -1,5 +1,6 @@
 import Link from "next/link"
 import React from "react"
+import { BASE_PATH } from "../config/config"
 
 export default function Error404(){
     return (
@@ -9,7 +10,7 @@ export default function Error404(){
                     <div className="row w-100 mx-0 auth-page">
                         <div className="col-md-8 col-xl-6 mx-auto d-flex flex-column align-items-center">
                             <img
-                                src="/images/404.svg"
+                                src={`${BASE_PATH}/images/404.svg`}
                                 className="img-fluid mb-2" 
                                 alt="404"
                                 width="911"

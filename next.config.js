@@ -2,7 +2,8 @@
 const nextConfig = {
   reactStrictMode: false,
   swcMinify: false,
-  trailingSlash:true
+  trailingSlash:true,
+  basePath:"/dashboard"
 }
 
 module.exports = nextConfig
