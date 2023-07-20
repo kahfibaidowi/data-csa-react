@@ -8,7 +8,10 @@ export const BASE_PATH=process.env.NODE_ENV=="development"?
     "/dashboard";
 export const BASE_URL=process.env.NODE_ENV==="development"?
     "http://localhost/data-csa/public":
-    "https://ews.tifpsdku.com/api";
+    "https://ewssipantara.id/api";
+export const FRONTPAGE_URL=process.env.NODE_ENV==="development"?
+"/":
+"https://ewssipantara.id";
 
 //windy
 export const WINDY_KEY="HvSDfrRvwQCr6g4WSF5WFBh3zlvWajN8"

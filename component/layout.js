@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react"
 import { Collapse, Dropdown } from "react-bootstrap"
 import {FiArchive, FiBook, FiChevronDown, FiCloudRain, FiEdit, FiEye, FiHelpCircle, FiHome, FiLayers, FiLogOut, FiMail, FiMapPin, FiMenu, FiSettings, FiTruck, FiUser} from "react-icons/fi"
 import {api} from "../config/api"
-import { BASE_PATH, access_token, login_data as user_data } from "../config/config"
+import { BASE_PATH, FRONTPAGE_URL, access_token, login_data as user_data } from "../config/config"
 import Avatar from "./ui/avatar"
 import { useTheme } from "../store/theme"
 
@@ -74,7 +74,7 @@ const Layout=(props)=>{
         .catch(err=>{
             if(err.response.status===401){
                 localStorage.removeItem("login_data")
-                Router.push("/")
+                window.location=FRONTPAGE_URL
             }
         })
     }
