@@ -244,4 +244,6 @@ class Frontpage extends React.Component{
     }
 }
 
+//test
+
 export default Frontpage
