@@ -10,7 +10,7 @@ import { toast } from "react-toastify"
 import Router from "next/router"
 import { FiChevronDown, FiChevronLeft, FiChevronRight, FiChevronUp, FiDownload, FiEdit, FiExternalLink, FiMoreVertical, FiPlus, FiTrash, FiTrash2, FiUpload, FiX } from "react-icons/fi"
 import Avatar from "../../../component/ui/avatar"
-import { Dropdown, Modal, OverlayTrigger, Spinner, Tooltip } from "react-bootstrap"
+import { Dropdown, Modal, Spinner } from "react-bootstrap"
 import swal from "sweetalert2"
 import withReactContent from 'sweetalert2-react-content'
 import Select from 'react-select'
@@ -26,7 +26,6 @@ import { read, utils, writeFile } from "xlsx"
 import * as ExcelJS from "exceljs"
 import { arrayMonths, sheetColumn } from "../../../config/helpers"
 import FileSaver from "file-saver"
-import _ from "underscore"
 
 
 //MAIN
@@ -37,7 +36,6 @@ class CurahHujan extends React.Component{
         pulau_form:[],
         curah_hujan:{
             q:"",
-            tahun:"",
             regency_id:"",
             province_id:"",
             pulau:"",
@@ -61,6 +59,10 @@ class CurahHujan extends React.Component{
         }
     }
 
+    componentDidMount=()=>{
+        this.fetchCurahHujan()
+    }
+
 
     //REQUEST DATA
     abortGetsCurahHujan=new AbortController()
@@ -69,7 +71,7 @@ class CurahHujan extends React.Component{
             this.abortGetsCurahHujan.abort()
             this.abortGetsCurahHujan=new AbortController()
             
-            return await api(access_token()).get("/curah_hujan/type/treeview", {
+            return await api(access_token()).get("/curah_hujan_normal/type/treeview", {
                 params:{
                     tahun:params.tahun
                 },
@@ -78,24 +80,15 @@ class CurahHujan extends React.Component{
             .then(res=>res.data)
         },
         apiUpdateCurahHujan:async(params)=>{
-            return await api(access_token()).post('/curah_hujan', params).then(res=>res.data)
+            return await api(access_token()).post('/curah_hujan_normal', params).then(res=>res.data)
         },
         apiUpdateCurahHujanMultiple:async(params)=>{
-            return await api(access_token()).post("/curah_hujan/type/multiple", params).then(res=>res.data)
+            return await api(access_token()).post("/curah_hujan_normal/type/multiple", params).then(res=>res.data)
         }
     }
 
     fetchCurahHujan=async()=>{
         const {data, ...params}=this.state.curah_hujan
-
-        if(params.tahun.toString().trim()==""){
-            this.setState({
-                curah_hujan:update(this.state.curah_hujan, {
-                    data:{$set:[]}
-                })
-            })
-            return false
-        }
 
         this.setLoading(true)
         await this.request.apiGetsCurahHujan(params)
@@ -115,14 +108,10 @@ class CurahHujan extends React.Component{
                                         }
                                         else{
                                             const data_curah_hujan={
-                                                id_curah_hujan:null,
                                                 id_region:kec.id_region,
-                                                tahun:params.tahun,
                                                 bulan:month,
                                                 input_ke:i,
-                                                curah_hujan:"",
                                                 curah_hujan_normal:"",
-                                                sifat:""
                                             }
                                             curah_hujan=curah_hujan.concat([data_curah_hujan])
                                         }
@@ -222,7 +211,6 @@ class CurahHujan extends React.Component{
             ]
         ]
         
-        let row=0;
         for(var i=0; i<curah_hujan.data.length; i++){
             if(values.pulau.toString().trim()!="" && curah_hujan.data[i].data.pulau.toString().trim()!=values.pulau.toString().trim()){
                 continue
@@ -243,23 +231,10 @@ class CurahHujan extends React.Component{
                             curah_hujan.data[i].region.toString().trim(),
                             curah_hujan.data[i].kabupaten_kota[j].region.toString().trim(),
                             curah_hujan.data[i].kabupaten_kota[j].kecamatan[k].region.toString().trim(),
-                            "CH Prediksi",
-                            ...Array.apply(null, Array(36)).map(String.prototype.valueOf, "")
-                        ],
-                        [
-                            "",
-                            "",
-                            "",
-                            "",
                             "CH Normal",
-                            ...Array.apply(null, Array(36)).map((item, idx)=>curah_hujan.data[i].kabupaten_kota[j].kecamatan[k].curah_hujan[idx].curah_hujan_normal)
+                            ...Array.apply(null, Array(36)).map(String.prototype.valueOf, "")
                         ]
                     ])
-
-                    rows_merge=rows_merge.concat([
-                        {s:{r:row*2+2, c:1}, e:{r:row*2+3, c:1}}
-                    ])
-                    row++
                 }
             }
         }
@@ -267,12 +242,6 @@ class CurahHujan extends React.Component{
         const workBook=new ExcelJS.Workbook()
         const workSheet1=workBook.addWorksheet("Sheet 1")
         workSheet1.addRows(aoa_curah_hujan)
-        rows_merge.map(rm=>{
-            workSheet1.mergeCells(`${sheetColumn(rm.s.c)}${rm.s.r}`, `${sheetColumn(rm.e.c)}${rm.e.r}`)
-            workSheet1.mergeCells(`${sheetColumn(rm.s.c+1)}${rm.s.r}`, `${sheetColumn(rm.e.c+1)}${rm.e.r}`)
-            workSheet1.mergeCells(`${sheetColumn(rm.s.c+2)}${rm.s.r}`, `${sheetColumn(rm.e.c+2)}${rm.e.r}`)
-            workSheet1.mergeCells(`${sheetColumn(rm.s.c+3)}${rm.s.r}`, `${sheetColumn(rm.e.c+3)}${rm.e.r}`)
-        })
         workSheet1.getColumn(1).hidden=true
         workSheet1.getRow(1).alignment={vertical:"middle"}
         workSheet1.getRow(1).font={bold:true}
@@ -291,7 +260,7 @@ class CurahHujan extends React.Component{
                 today.getMinutes().toString().padStart(2, "0")+
                 today.getSeconds().toString().padStart(2, "0")
 
-            FileSaver.saveAs(new Blob([data]), date+"__template__curah-hujan.xlsx")
+            FileSaver.saveAs(new Blob([data]), date+"__template__ch-normal.xlsx")
 
             this.toggleModalDownloadTemplate()
             actions.setSubmitting(false)
@@ -302,13 +271,6 @@ class CurahHujan extends React.Component{
         })
     }
     generateImportedExcel=async(file)=>{
-        const {curah_hujan}=this.state
-
-        if(curah_hujan.tahun.toString().trim()==""){
-            toast.warn("Pilih tahun terlebih dahulu!", {position:"bottom-center"})
-            return
-        }
-
         const workBook=new ExcelJS.Workbook()
         const buffer=await readFile(file)
 
@@ -321,31 +283,26 @@ class CurahHujan extends React.Component{
 
         workSheet.eachRow((row, row_num)=>{
             if(row_num>1){
-                if(row_num%2==0 && !isNull(row.getCell(1).value)){
+                if(!isNull(row.getCell(1).value)){
                     let found_ch=false
                     let col_ch=[]
 
                     for(var i=start_col; i<=41; i++){
                         col_ch=col_ch.concat([
                             {
-                                ch_prediksi:row.getCell(i).value,
-                                ch_normal:workSheet.getRow(row_num+1).getCell(i).value
+                                ch_normal:row.getCell(i).value
                             }
                         ])
 
-                        if(!isNull(row.getCell(i).value) || !isNull(workSheet.getRow(row_num+1).getCell(i).value)){
+                        if(!isNull(row.getCell(i).value)){
                             found_ch=true
-                        }
 
-                        if(!isNull(row.getCell(i).value) && !isNull(workSheet.getRow(row_num+1).getCell(i).value)){
                             imported=imported.concat([
                                 {
                                     id_region:row.getCell(1).value,
-                                    tahun:curah_hujan.tahun,
                                     bulan:Math.floor((i-start_col)/3)+1,
                                     input_ke:((i-start_col)%3)+1,
-                                    curah_hujan:row.getCell(i).value,
-                                    curah_hujan_normal:workSheet.getRow(row_num+1).getCell(i).value
+                                    curah_hujan_normal:workSheet.getRow(row_num).getCell(i).value
                                 }
                             ])
                         }
@@ -469,10 +426,6 @@ class CurahHujan extends React.Component{
     toggleModalDownloadTemplate=(is_open=false)=>{
         const {curah_hujan}=this.state
 
-        if(curah_hujan.tahun.toString().trim()==""){
-            toast.warn("Pilih tahun terlebih dahulu!", {position:"bottom-center"})
-            return
-        }
         if(curah_hujan.data.length==0 || curah_hujan.data.is_loading){
             toast.warn("Data Kecamatan tidak ditemukan!", {position:"bottom-center"})
             return
@@ -515,7 +468,7 @@ class CurahHujan extends React.Component{
                 <Layout>
                     <div className="d-flex justify-content-between align-items-center flex-wrap grid-margin">
                         <div>
-                            <h4 className="mb-3 mb-md-0">Data Curah Hujan</h4>
+                            <h4 className="mb-3 mb-md-0">Data Curah Hujan Normal</h4>
                         </div>
                         <div className="d-flex align-items-center flex-wrap text-nowrap">
                         </div>
@@ -701,27 +654,12 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
                 const test=[
                     Object.assign({}, data.data[i], {
                         index:i,
-                        index_table:i*5+0,
+                        index_table:i*2+0,
                         kabupaten_kota:undefined
                     }),
                     Object.assign({}, data.data[i], {
                         index:i,
-                        index_table:i*5+1,
-                        kabupaten_kota:undefined
-                    }),
-                    Object.assign({}, data.data[i], {
-                        index:i,
-                        index_table:i*5+2,
-                        kabupaten_kota:undefined
-                    }),
-                    Object.assign({}, data.data[i], {
-                        index:i,
-                        index_table:i*5+3,
-                        kabupaten_kota:undefined
-                    }),
-                    Object.assign({}, data.data[i], {
-                        index:i,
-                        index_table:i*5+4,
+                        index_table:i*2+1,
                         kabupaten_kota:undefined
                     })
                 ]
@@ -738,33 +676,15 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
                             Object.assign({}, data.data[i].kabupaten_kota[j], {
                                 index:j,
                                 index_provinsi:i,
-                                index_table:j*5+0,
+                                index_table:j*2+0,
                                 kecamatan:undefined
                             }),
                             Object.assign({}, data.data[i].kabupaten_kota[j], {
                                 index:j,
                                 index_provinsi:i,
-                                index_table:j*5+1,
+                                index_table:j*2+1,
                                 kecamatan:undefined
-                            }),
-                            Object.assign({}, data.data[i].kabupaten_kota[j], {
-                                index:j,
-                                index_provinsi:i,
-                                index_table:j*5+2,
-                                kecamatan:undefined
-                            }),
-                            Object.assign({}, data.data[i].kabupaten_kota[j], {
-                                index:j,
-                                index_provinsi:i,
-                                index_table:j*5+3,
-                                kecamatan:undefined
-                            }),
-                            Object.assign({}, data.data[i].kabupaten_kota[j], {
-                                index:j,
-                                index_provinsi:i,
-                                index_table:j*5+4,
-                                kecamatan:undefined
-                            }),
+                            })
                         ]
                         new_data=new_data.concat(test2)
                         
@@ -780,35 +700,14 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
                                         index:k,
                                         index_provinsi:i,
                                         index_kabupaten_kota:j,
-                                        index_table:k*5+0,
+                                        index_table:k*2+0,
                                         kecamatan:undefined
                                     }),
                                     Object.assign({}, data.data[i].kabupaten_kota[j].kecamatan[k], {
                                         index:k,
                                         index_provinsi:i,
                                         index_kabupaten_kota:j,
-                                        index_table:k*5+1,
-                                        kecamatan:undefined
-                                    }),
-                                    Object.assign({}, data.data[i].kabupaten_kota[j].kecamatan[k], {
-                                        index:k,
-                                        index_provinsi:i,
-                                        index_kabupaten_kota:j,
-                                        index_table:k*5+2,
-                                        kecamatan:undefined
-                                    }),
-                                    Object.assign({}, data.data[i].kabupaten_kota[j].kecamatan[k], {
-                                        index:k,
-                                        index_provinsi:i,
-                                        index_kabupaten_kota:j,
-                                        index_table:k*5+3,
-                                        kecamatan:undefined
-                                    }),
-                                    Object.assign({}, data.data[i].kabupaten_kota[j].kecamatan[k], {
-                                        index:k,
-                                        index_provinsi:i,
-                                        index_kabupaten_kota:j,
-                                        index_table:k*5+4,
+                                        index_table:k*2+1,
                                         kecamatan:undefined
                                     })
                                 ];
@@ -828,55 +727,6 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
     }
 
     //helper
-    const valueSifatHujan=(curah_hujan, normal)=>{
-        if(curah_hujan.toString().trim()==""||normal.toString().trim()==""){
-            return ""
-        }
-        if(Number(normal)==0){
-            return "?";
-        }
-
-        const value=curah_hujan/normal;
-        if(value<0.85){
-            return "Bawah Normal";
-        }
-        if(value>=0.85 && value<=1.15){
-            return "Normal";
-        }
-        if(value>1.15){
-            return "Atas Normal";
-        }
-    }
-    const valueSifatBulan=(curah_hujan)=>{
-        if(curah_hujan.toString().trim()==""){
-            return ""
-        }
-
-        if(curah_hujan>200){
-            return "Bulan Basah"
-        }
-        else if(curah_hujan>=100 && curah_hujan<=200){
-            return "Bulan Lembab"
-        }
-        else if(curah_hujan>=60 && curah_hujan<100){
-            return "Bulan Kering"
-        }
-        else if(curah_hujan<60){
-            return "Bulan Sangat Kering"
-        }
-    }
-    const valueCurahHujanSumTahunan=(curah_hujan=[])=>{
-        const sum_curah_hujan=curah_hujan.reduce((total, value)=>{
-            let ch=0
-            if(value.curah_hujan.toString()!=""){
-                ch=Number(value.curah_hujan)
-            }
-
-            return total+ch
-        }, 0)
-
-        return sum_curah_hujan
-    }
     const valueCurahHujanNormalSumTahunan=(curah_hujan=[])=>{
         const sum_curah_hujan=curah_hujan.reduce((total, value)=>{
             let ch=0
@@ -889,35 +739,7 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
 
         return sum_curah_hujan
     }
-    const valueCountSifatBulan=(curah_hujan=[], type)=>{
-        let sifat_bulan=[]
-        curah_hujan.map(ch=>{
-            sifat_bulan=sifat_bulan.concat([valueSifatBulan(ch.curah_hujan)])
-        })
-        
-        let count=0;
-        for(var i=0; i<sifat_bulan.length; i++){
-            if(sifat_bulan[i].toString()==type.toString()){
-                count+=1
-            }
-        }
-
-        return count
-    }
     //--value tree
-    const valueAkumulasiCH=(arr_curah_hujan)=>{
-        //calculate
-        var curah_hujan=arr_curah_hujan.filter(f=>!_.isNull(f.id_curah_hujan))
-        if(curah_hujan.length>0){
-            const sum_curah_hujan=curah_hujan.reduce((carry, item)=>{
-                return Number(carry)+Number(item.curah_hujan)
-            }, 0)
-
-            return sum_curah_hujan/curah_hujan.length
-        }
-        return ""
-
-    }
     const valueAkumulasiCHNormal=(arr_curah_hujan)=>{
         //calculace
         if(arr_curah_hujan.length>0){
@@ -936,18 +758,11 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
             const avg_kabupaten_kota=valueKabupatenKotaCurahHujanColumn(idx_provinsi, idx, idx_column)
 
             if(avg_kabupaten_kota.length>0){
-                var avg_ch_pred=avg_kabupaten_kota.filter(f=>!_.isNull(f.id_curah_hujan))
-
-                const ch=avg_ch_pred.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan)
-                }, 0)
                 const ch_normal=avg_kabupaten_kota.reduce((carry, item)=>{
                     return Number(carry)+Number(item.curah_hujan_normal)
                 }, 0)
 
                 curah_hujan=curah_hujan.concat([{
-                    id_curah_hujan:avg_ch_pred.length>0?-1:null,
-                    curah_hujan:avg_ch_pred.length>0?ch/avg_ch_pred.length:"",
                     curah_hujan_normal:ch_normal/avg_kabupaten_kota.length
                 }])
             }
@@ -959,7 +774,7 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
         let curah_hujan=[]
 
         data.data[idx_provinsi].kabupaten_kota[idx_kabupaten_kota].kecamatan.map(kec=>{
-            if(!_.isUndefined(kec.curah_hujan[idx_column].id_curah_hujan)){
+            if(!isUndefined(kec.curah_hujan[idx_column].id_curah_hujan_normal)){
                 curah_hujan=curah_hujan.concat([kec.curah_hujan[idx_column]])
             }
         })
@@ -973,17 +788,11 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
             const ch_provinsi_column=valueProvinsiCurahHujanColumn(idx_provinsi, i)
 
             if(ch_provinsi_column.length>0){
-                var ch_pred=ch_provinsi_column.filter(f=>!_.isNull(f.id_curah_hujan))
-                const ch=ch_pred.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan)
-                }, 0)
                 const ch_normal=ch_provinsi_column.reduce((carry, item)=>{
                     return Number(carry)+Number(item.curah_hujan_normal)
                 }, 0)
 
                 curah_hujan=curah_hujan.concat([{
-                    id_curah_hujan:ch_pred.length>0?-1:null,
-                    curah_hujan:ch_pred.length>0?ch/ch_pred.length:"",
                     curah_hujan_normal:ch_normal/ch_provinsi_column.length
                 }])
             }
@@ -998,18 +807,11 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
             const ch_kabupaten_kota_column=valueKabupatenKotaCurahHujanColumn(idx_provinsi, idx_kabupaten_kota, i)
 
             if(ch_kabupaten_kota_column.length>0){
-                var ch_pred=ch_kabupaten_kota_column.filter(f=>!_.isNull(f.id_curah_hujan))
-
-                const ch=ch_pred.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan)
-                }, 0)
                 const ch_normal=ch_kabupaten_kota_column.reduce((carry, item)=>{
                     return Number(carry)+Number(item.curah_hujan_normal)
                 }, 0)
 
                 curah_hujan=curah_hujan.concat([{
-                    id_curah_hujan:ch_pred.length>0?-1:null,
-                    curah_hujan:ch_pred.length>0?ch/ch_pred.length:"",
                     curah_hujan_normal:ch_normal/ch_kabupaten_kota_column.length
                 }])
             }
@@ -1050,7 +852,7 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
             width: 30,
             frozen: true,
             formatter:({row})=>{
-                if(row.index*5+0==row.index_table && row.type=="provinsi"){
+                if(row.index*2+0==row.index_table && row.type=="provinsi"){
                     return <span>{row.index+1}</span>
                 }
                 else{
@@ -1065,7 +867,7 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
             resizable: true,
             frozen: true,
             formatter:({row})=>{
-                if(row.index*5+0==row.index_table && row.type=="provinsi"){
+                if(row.index*2+0==row.index_table && row.type=="provinsi"){
                     return <span>{row.region}</span>
                 }
                 else if(!["provinsi", "space"].includes(row.type)){
@@ -1083,10 +885,10 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
             resizable: true,
             frozen: true,
             formatter:({row})=>{
-                if(row.index*5+0==row.index_table && row.type=="kabupaten_kota"){
+                if(row.index*2+0==row.index_table && row.type=="kabupaten_kota"){
                     return <span>{row.region}</span>
                 }
-                else if(row.index*5+0==row.index_table && row.type=="provinsi"){
+                else if(row.index*2+0==row.index_table && row.type=="provinsi"){
                     return (
                         <div className="d-flex justify-content-end">
                             <button 
@@ -1128,10 +930,10 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
             resizable: true,
             frozen: true,
             formatter:({row})=>{
-                if(row.index*5+0==row.index_table && row.type=="kecamatan"){
+                if(row.index*2+0==row.index_table && row.type=="kecamatan"){
                     return <span>{row.region}</span>
                 }
-                else if(row.index*5+0==row.index_table && row.type=="kabupaten_kota"){
+                else if(row.index*2+0==row.index_table && row.type=="kabupaten_kota"){
                     return (
                         <div className="d-flex justify-content-end">
                             <button 
@@ -1169,17 +971,8 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
             width: 150,
             frozen: true,
             formatter:({row})=>{
-                if(row.index*5+0==row.index_table){
-                    return <span>Curah Hujan (mm)</span>
-                }
-                else if(row.index*5+1==row.index_table){
+                if(row.index*2+0==row.index_table){
                     return <span>CH Normal (mm)</span>
-                }
-                else if(row.index*5+2==row.index_table){
-                    return <span>Sifat CH</span>
-                }
-                else if(row.index*5+3==row.index_table){
-                    return <span>Sifat Bulan</span>
                 }
                 else{
                     return <span></span>
@@ -1557,34 +1350,22 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
                 if(row.type=="provinsi"){
                     const curah_hujan=valueProvinsiCurahHujan(row.index)
 
-                    ch=valueAkumulasiCH(curah_hujan)
                     ch_normal=valueAkumulasiCHNormal(curah_hujan)
                 }
                 else if(row.type=="kabupaten_kota"){
                     const curah_hujan=valueKabupatenKotaCurahHujan(row.index_provinsi, row.index)
 
-                    ch=valueAkumulasiCH(curah_hujan)
                     ch_normal=valueAkumulasiCHNormal(curah_hujan)
                 }
                 else if(row.type=="kecamatan"){
-                    const curah_hujan=row.curah_hujan.filter(f=>!_.isNull(f.id_curah_hujan))
+                    const curah_hujan=row.curah_hujan.filter(f=>!isUndefined(f.id_curah_hujan_normal))
 
-                    ch=valueAkumulasiCH(curah_hujan)
                     ch_normal=valueAkumulasiCHNormal(curah_hujan)
                 }
 
                 //return
-                if(row.index*5+0==row.index_table){
-                    return <span>{ch}</span>
-                }
-                else if(row.index*5+1==row.index_table){
+                if(row.index*2+0==row.index_table){
                     return <span>{ch_normal}</span>
-                }
-                else if(row.index*5+2==row.index_table){
-                    return <span>{valueSifatHujan(ch, ch_normal)}</span>
-                }
-                else if(row.index*5+3==row.index_table){
-                    return <span>{valueSifatBulan(ch)}</span>
                 }
                 else{
                     return (
@@ -1604,144 +1385,22 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
                 if(row.type=="provinsi"){
                     const curah_hujan=valueProvinsiCurahHujan(row.index)
 
-                    ch=valueCurahHujanSumTahunan(curah_hujan)
                     ch_normal=valueCurahHujanNormalSumTahunan(curah_hujan)
                 }
                 else if(row.type=="kabupaten_kota"){
                     const curah_hujan=valueKabupatenKotaCurahHujan(row.index_provinsi, row.index)
 
-                    ch=valueCurahHujanSumTahunan(curah_hujan)
                     ch_normal=valueCurahHujanNormalSumTahunan(curah_hujan)
                 }
                 else if(row.type=="kecamatan"){
-                    const curah_hujan=row.curah_hujan.filter(f=>!isUndefined(f.id_curah_hujan))
+                    const curah_hujan=row.curah_hujan.filter(f=>!isUndefined(f.id_curah_hujan_normal))
 
-                    ch=valueCurahHujanSumTahunan(curah_hujan)
                     ch_normal=valueCurahHujanNormalSumTahunan(curah_hujan)
                 }
 
                 //return
-                if(row.index*5+0==row.index_table){
-                    return <span>{ch}</span>
-                }
-                else if(row.index*5+1==row.index_table){
+                if(row.index*2+0==row.index_table){
                     return <span>{ch_normal}</span>
-                }
-                else{
-                    return (
-                        <span></span>
-                    )
-                }
-            }
-        },
-        {
-            key: 'jumlah_bulan_basah',
-            name: 'Jumlah Bulan Basah',
-            width: 150,
-            resizable: true,
-            formatter:({row})=>{
-                const type="Bulan Basah"
-                let curah_hujan=[]
-
-                if(row.type=="provinsi"){
-                    curah_hujan=valueProvinsiCurahHujan(row.index)
-                }
-                else if(row.type=="kabupaten_kota"){
-                    curah_hujan=valueKabupatenKotaCurahHujan(row.index_provinsi, row.index)
-                }
-                else if(row.type=="kecamatan"){
-                    curah_hujan=row.curah_hujan.filter(f=>!isUndefined(f.id_curah_hujan))
-                }
-    
-                if(row.index*5+3==row.index_table){
-                    return <span>{valueCountSifatBulan(curah_hujan, type)}</span>
-                }
-                else{
-                    return (
-                        <span></span>
-                    )
-                }
-            }
-        },
-        {
-            key: 'jumlah_bulan_lembab',
-            name: 'Jumlah Bulan Lembab',
-            width: 150,
-            resizable: true,
-            formatter:({row})=>{
-                const type="Bulan Lembab"
-                let curah_hujan=[]
-
-                if(row.type=="provinsi"){
-                    curah_hujan=valueProvinsiCurahHujan(row.index)
-                }
-                else if(row.type=="kabupaten_kota"){
-                    curah_hujan=valueKabupatenKotaCurahHujan(row.index_provinsi, row.index)
-                }
-                else if(row.type=="kecamatan"){
-                    curah_hujan=row.curah_hujan.filter(f=>!isUndefined(f.id_curah_hujan))
-                }
-    
-                if(row.index*5+3==row.index_table){
-                    return <span>{valueCountSifatBulan(curah_hujan, type)}</span>
-                }
-                else{
-                    return (
-                        <span></span>
-                    )
-                }
-            }
-        },
-        {
-            key: 'jumlah_bulan_kering',
-            name: 'Jumlah Bulan Kering',
-            width: 150,
-            resizable: true,
-            formatter:({row})=>{
-                const type="Bulan Kering"
-                let curah_hujan=[]
-
-                if(row.type=="provinsi"){
-                    curah_hujan=valueProvinsiCurahHujan(row.index)
-                }
-                else if(row.type=="kabupaten_kota"){
-                    curah_hujan=valueKabupatenKotaCurahHujan(row.index_provinsi, row.index)
-                }
-                else if(row.type=="kecamatan"){
-                    curah_hujan=row.curah_hujan.filter(f=>!isUndefined(f.id_curah_hujan))
-                }
-    
-                if(row.index*5+3==row.index_table){
-                    return <span>{valueCountSifatBulan(curah_hujan, type)}</span>
-                }
-                else{
-                    return (
-                        <span></span>
-                    )
-                }
-            }
-        },
-        {
-            key: 'jumlah_bulan_sangat_kering',
-            name: 'Jumlah Bulan Sangat Kering',
-            width: 150,
-            resizable: true,
-            formatter:({row})=>{
-                const type="Bulan Sangat Kering"
-                let curah_hujan=[]
-
-                if(row.type=="provinsi"){
-                    curah_hujan=valueProvinsiCurahHujan(row.index)
-                }
-                else if(row.type=="kabupaten_kota"){
-                    curah_hujan=valueKabupatenKotaCurahHujan(row.index_provinsi, row.index)
-                }
-                else if(row.type=="kecamatan"){
-                    curah_hujan=row.curah_hujan.filter(f=>!isUndefined(f.id_curah_hujan))
-                }
-    
-                if(row.index*5+3==row.index_table){
-                    return <span>{valueCountSifatBulan(curah_hujan, type)}</span>
                 }
                 else{
                     return (
@@ -1761,37 +1420,38 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
         }
     ]
     const renderColumnBulan=(row, row_index)=>{
-        let ch="", ch_normal=""
+        let ch_normal=""
 
         if(row.type=="provinsi"){
             const curah_hujan_column=valueProvinsiCurahHujanColumn(row.index, row_index)
 
-            ch=valueAkumulasiCH(curah_hujan_column)
             ch_normal=valueAkumulasiCHNormal(curah_hujan_column)
         }
         else if(row.type=="kabupaten_kota"){
             const curah_hujan_column=valueKabupatenKotaCurahHujanColumn(row.index_provinsi, row.index, row_index)
 
-            ch=valueAkumulasiCH(curah_hujan_column)
             ch_normal=valueAkumulasiCHNormal(curah_hujan_column)
         }
         else if(row.type=="kecamatan"){
-            ch=row.curah_hujan[row_index].curah_hujan
             ch_normal=row.curah_hujan[row_index].curah_hujan_normal
         }
 
         //return
-        if(row.index*5+0==row.index_table){
-            return <span>{ch}</span>
-        }
-        else if(row.index*5+1==row.index_table){
+        if(row.index*2+0==row.index_table){
             return <span>{ch_normal}</span>
         }
-        else if(row.index*5+2==row.index_table){
-            return <span>{valueSifatHujan(ch, ch_normal)}</span>
-        }
-        else if(row.index*5+3==row.index_table){
-            return <span>{valueSifatBulan(ch)}</span>
+        else if(row.index*2+1==row.index_table && row.type=="kecamatan"){
+            return (
+                <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                    <button 
+                        className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                        type="button"
+                        onClick={ev=>toggleModalEdit(row.index_provinsi, row.index_kabupaten_kota, row.index, row.curah_hujan[row_index], true)}
+                    >
+                        Edit
+                    </button>
+                </div>
+            )
         }
         else{
             return (
@@ -1874,22 +1534,42 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
                     </div>
                 </div>
                 <div className="ms-auto d-flex">
-                    <div style={{width:"200px"}} className="me-3 position-relative">
-                        <CreatableSelect
-                            options={tahun_options()}
-                            onChange={e=>{
-                                typeFilter({target:{name:"tahun", value:e.value}})
-                            }}
-                            value={tahun_options().find(f=>f.value==data.tahun)}
-                            placeholder="Pilih Tahun"
-                        />
-                    </div>
                     <button className="btn btn-light btn-icon ms-1" type="button" onClick={e=>setFullScreen(true)} title="full screen">
                         <FiExternalLink className="icon"/>
                     </button>
+                    <Dropdown align="end">
+                        <Dropdown.Toggle variant="light" className="btn-icon ms-1">
+                            <FiMoreVertical className="icon"/>
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu>
+                            <Dropdown.Item 
+                                href="#/download-template-excel" 
+                                onClick={e=>{
+                                    e.preventDefault()
+                                    toggleModalDownloadTemplate(true)
+                                }}
+                            >
+                                Download Template Excel
+                            </Dropdown.Item>
+                            <label className="w-100">
+                                <Dropdown.Item className="d-block w-100 cursor-pointer" as="span">
+                                    Import dari Template
+                                </Dropdown.Item>
+                                <input
+                                    type="file"
+                                    name="file"
+                                    onChange={e=>{
+                                        generateImportedExcel(e.target.files[0])
+                                    }}
+                                    style={{display:"none"}}
+                                    accept=".xlsx"
+                                />
+                            </label>
+                        </Dropdown.Menu>
+                    </Dropdown>
                 </div>
             </div>
-
+            
             {!full_screen&&
                 <div className="position-relative" style={{height:"600px"}}>
                     <DataGrid
@@ -2012,6 +1692,36 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
                             <button className="btn btn-light btn-icon ms-1" type="button" onClick={e=>setFullScreen(false)} title="close full screen">
                                 <FiX className="icon"/>
                             </button>
+                            <Dropdown align="end">
+                                <Dropdown.Toggle variant="light" className="btn-icon ms-1">
+                                    <FiMoreVertical className="icon"/>
+                                </Dropdown.Toggle>
+                                <Dropdown.Menu>
+                                    <Dropdown.Item 
+                                        href="#/download-template-excel" 
+                                        onClick={e=>{
+                                            e.preventDefault()
+                                            toggleModalDownloadTemplate(true)
+                                        }}
+                                    >
+                                        Download Template Excel
+                                    </Dropdown.Item>
+                                    <label className="w-100">
+                                        <Dropdown.Item className="d-block w-100 cursor-pointer" as="span">
+                                            Import dari Template
+                                        </Dropdown.Item>
+                                        <input
+                                            type="file"
+                                            name="file"
+                                            onChange={e=>{
+                                                generateImportedExcel(e.target.files[0])
+                                            }}
+                                            style={{display:"none"}}
+                                            accept=".xlsx"
+                                        />
+                                    </label>
+                                </Dropdown.Menu>
+                            </Dropdown>
                         </div>
                     </div>
                 </Modal.Header>
@@ -2049,7 +1759,7 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
                     }
                 </Modal.Body>
                 <Modal.Footer className="d-flex justify-content-between align-items-center py-1">
-                    <Modal.Title>Data Curah Hujan (Kabupaten/Kota)</Modal.Title>
+                    <Modal.Title>Data Curah Hujan Normal (Kabupaten/Kota)</Modal.Title>
                     <button className="btn btn-light" type="button" onClick={e=>setFullScreen(false)}>
                         Tutup Full Screen
                     </button>
@@ -2313,18 +2023,12 @@ const ModalImportTemplate=({data, onHide, importTemplate})=>{
                         resizable:true,
                         formatter:({row})=>{
                             const index=idx_month*3+(input_ke-1)
-                            const decoration=(!isNull(row.curah_hujan[index].ch_prediksi)&&!isNull(row.curah_hujan[index].ch_normal))?"none":"line-through"
+                            const decoration=(!isNull(row.curah_hujan[index].ch_normal))?"none":"line-through"
 
                             return (
                                 <>
-                                    {(!isNull(row.curah_hujan[index].ch_prediksi)||!isNull(row.curah_hujan[index].ch_normal))&&
+                                    {!isNull(row.curah_hujan[index].ch_normal)&&
                                         <span style={{textDecoration:decoration}}>
-                                            {!isNull(row.curah_hujan[index].ch_prediksi)?
-                                                row.curah_hujan[index].ch_prediksi
-                                            :
-                                                "?"
-                                            }
-                                            , 
                                             {!isNull(row.curah_hujan[index].ch_normal)?
                                                 row.curah_hujan[index].ch_normal
                                             :
@@ -2396,15 +2100,9 @@ const ModalImportTemplate=({data, onHide, importTemplate})=>{
             backdropClassName="backdrop-nested"
         >
             <Modal.Header closeButton>
-                <h4 className="modal-title">Preview Import Excel (CH Prediksi, CH Normal)</h4>
+                <h4 className="modal-title">Preview Import Excel (CH Normal)</h4>
             </Modal.Header>
             <Modal.Body className="p-0">
-                <div className="mb-4 mt-4">
-                    <ol>
-                        <li>Pastikan Curah Hujan Normal pada Region Bulan Sudah Diinput, Jika Belum diinput proses import akan gagal!</li>
-                        <li>Isilah Hanya inputan CH Prediksi dari template excel, Jangan input CH Prediksi jika tidak ada nilai CH Normal Pada Region Bulan!</li>
-                    </ol>
-                </div>
                 <DataGrid
                     rows={data.data.template}
                     columns={columns}
@@ -2437,7 +2135,7 @@ const ModalImportTemplate=({data, onHide, importTemplate})=>{
     )
 }
 
-//EDIT EWS
+//EDIT
 const ModalEdit=({data, toggleModalEdit, updateCurahHujan})=>{
 
     return (
@@ -2456,9 +2154,7 @@ const ModalEdit=({data, toggleModalEdit, updateCurahHujan})=>{
                 validationSchema={
                     yup.object().shape({
                         id_region:yup.string().required(),
-                        tahun:yup.string().required(),
                         bulan:yup.string().required(),
-                        curah_hujan:yup.number().required(),
                         curah_hujan_normal:yup.number().required()
                     })
                 }
@@ -2466,23 +2162,9 @@ const ModalEdit=({data, toggleModalEdit, updateCurahHujan})=>{
                 {formik=>(
                     <form onSubmit={formik.handleSubmit}>
                         <Modal.Header closeButton>
-                            <h4 className="modal-title">Edit Curah Hujan</h4>
+                            <h4 className="modal-title">Edit CH Normal</h4>
                         </Modal.Header>
                         <Modal.Body>
-                            <div className="mb-2">
-                                <label className="my-1 me-2">Curah Hujan</label>
-                                <NumberFormat
-                                    className="form-control"
-                                    thousandSeparator
-                                    value={formik.values.curah_hujan}
-                                    onValueChange={values=>{
-                                        const {value}=values
-                                        formik.setFieldValue("curah_hujan", value)
-                                    }}
-                                    suffix=" mm"
-                                    allowNegative={false}
-                                />
-                            </div>
                             <div className="mb-2">
                                 <label className="my-1 me-2">Curah Hujan Normal</label>
                                 <NumberFormat

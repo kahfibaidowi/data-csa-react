@@ -1793,6 +1793,32 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
         else if(row.index*5+3==row.index_table){
             return <span>{valueSifatBulan(ch)}</span>
         }
+        else if(row.index*5+4==row.index_table && row.type=="kecamatan"){
+            return (
+                <div className="d-grid gap-2 h-100 px-0" style={{width:"100%"}}>
+                    {row.curah_hujan[row_index].curah_hujan_normal!=""?
+                        <button 
+                            className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                            type="button"
+                            onClick={ev=>toggleModalEdit(row.index_provinsi, row.index_kabupaten_kota, row.index, row.curah_hujan[row_index], true)}
+                        >
+                            Edit
+                        </button>
+                    :
+                        <OverlayTrigger overlay={<Tooltip placement="top">Input CH Prediksi Terlebih dahulu</Tooltip>}>
+                            <button 
+                                className="d-flex align-items-center justify-content-center btn p-0 btn-light rounded-0"
+                                type="button"
+                                style={{pointerEvents:"auto"}}
+                                disabled
+                            >
+                                Edit
+                            </button>
+                        </OverlayTrigger>
+                    }
+                </div>
+            )
+        }
         else{
             return (
                 <span></span>
@@ -1887,6 +1913,36 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
                     <button className="btn btn-light btn-icon ms-1" type="button" onClick={e=>setFullScreen(true)} title="full screen">
                         <FiExternalLink className="icon"/>
                     </button>
+                    <Dropdown align="end">
+                        <Dropdown.Toggle variant="light" className="btn-icon ms-1">
+                            <FiMoreVertical className="icon"/>
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu>
+                            <Dropdown.Item 
+                                href="#/download-template-excel" 
+                                onClick={e=>{
+                                    e.preventDefault()
+                                    toggleModalDownloadTemplate(true)
+                                }}
+                            >
+                                Download Template Excel
+                            </Dropdown.Item>
+                            <label className="w-100">
+                                <Dropdown.Item className="d-block w-100 cursor-pointer" as="span">
+                                    Import dari Template
+                                </Dropdown.Item>
+                                <input
+                                    type="file"
+                                    name="file"
+                                    onChange={e=>{
+                                        generateImportedExcel(e.target.files[0])
+                                    }}
+                                    style={{display:"none"}}
+                                    accept=".xlsx"
+                                />
+                            </label>
+                        </Dropdown.Menu>
+                    </Dropdown>
                 </div>
             </div>
 
@@ -2012,6 +2068,36 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
                             <button className="btn btn-light btn-icon ms-1" type="button" onClick={e=>setFullScreen(false)} title="close full screen">
                                 <FiX className="icon"/>
                             </button>
+                            <Dropdown align="end">
+                                <Dropdown.Toggle variant="light" className="btn-icon ms-1">
+                                    <FiMoreVertical className="icon"/>
+                                </Dropdown.Toggle>
+                                <Dropdown.Menu>
+                                    <Dropdown.Item 
+                                        href="#/download-template-excel" 
+                                        onClick={e=>{
+                                            e.preventDefault()
+                                            toggleModalDownloadTemplate(true)
+                                        }}
+                                    >
+                                        Download Template Excel
+                                    </Dropdown.Item>
+                                    <label className="w-100">
+                                        <Dropdown.Item className="d-block w-100 cursor-pointer" as="span">
+                                            Import dari Template
+                                        </Dropdown.Item>
+                                        <input
+                                            type="file"
+                                            name="file"
+                                            onChange={e=>{
+                                                generateImportedExcel(e.target.files[0])
+                                            }}
+                                            style={{display:"none"}}
+                                            accept=".xlsx"
+                                        />
+                                    </label>
+                                </Dropdown.Menu>
+                            </Dropdown>
                         </div>
                     </div>
                 </Modal.Header>
@@ -2495,6 +2581,7 @@ const ModalEdit=({data, toggleModalEdit, updateCurahHujan})=>{
                                     }}
                                     suffix=" mm"
                                     allowNegative={false}
+                                    disabled
                                 />
                             </div>
                         </Modal.Body>

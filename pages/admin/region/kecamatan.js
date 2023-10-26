@@ -16,6 +16,7 @@ import withReactContent from 'sweetalert2-react-content'
 import Select from 'react-select'
 import { Formik } from "formik"
 import * as yup from "yup"
+import * as turf from "@turf/turf"
 
 
 const MySwal=withReactContent(swal)
@@ -727,6 +728,9 @@ const ModalTambah=({data, provinsi_form, regency_form, toggleModalTambah, addReg
                                         onChange={formik.handleChange}
                                     />
                                 </div>
+                                <div class="form-text">
+                                    Latitude dan Longitude dapat dikalkukasi dari form GeoJSON!
+                                </div>
                             </div>
                             <div className="mb-3">
                                 <div className="d-flex align-items-center mb-1">
@@ -740,8 +744,34 @@ const ModalTambah=({data, provinsi_form, regency_form, toggleModalTambah, addReg
                                             onChange={async e=>{
                                                 const data=await e.target.files[0].text()
                                                 try{
-                                                    const geo_json=JSON.parse(data)
-                                                    formik.setFieldValue("geo_json", geo_json)
+                                                    MySwal.fire({
+                                                        title: "Kalkulasi Koordinat?",
+                                                        text: "Saat dikalkulasi akan mengupdate nilai Latitude dan Longitude!",
+                                                        icon: 'question',
+                                                        showCancelButton: true,
+                                                        confirmButtonText: 'Ya, Kalkukasi!',
+                                                        cancelButtonText: 'Jangan!',
+                                                        reverseButtons: true,
+                                                        customClass:{
+                                                            popup:"w-auto"
+                                                        }
+                                                    })
+                                                    .then(result=>{
+                                                        const geo_json=JSON.parse(data)
+                                                        formik.setFieldValue("geo_json", geo_json)
+
+                                                        if(result.isConfirmed){
+                                                            const feature={
+                                                                type:"Feature",
+                                                                properties:{},
+                                                                geometry:geo_json
+                                                            }
+                                                            const center=turf.center(feature)
+                                                            
+                                                            formik.setFieldValue("map_center.latitude", center.geometry.coordinates[1])
+                                                            formik.setFieldValue("map_center.longitude", center.geometry.coordinates[0])
+                                                        }
+                                                    })
                                                 }
                                                 catch(e){
                                                     toast.error("Geo JSON invalid!", {position:"bottom-center"})
@@ -950,6 +980,9 @@ const ModalEdit=({data, provinsi_form, toggleModalEdit, updateRegion, request})=
                                         onChange={formik.handleChange}
                                     />
                                 </div>
+                                <div class="form-text">
+                                    Latitude dan Longitude dapat dikalkukasi dari form GeoJSON!
+                                </div>
                             </div>
                             <div className="mb-3">
                                 <div className="d-flex align-items-center mb-1">
@@ -963,8 +996,34 @@ const ModalEdit=({data, provinsi_form, toggleModalEdit, updateRegion, request})=
                                             onChange={async e=>{
                                                 const data=await e.target.files[0].text()
                                                 try{
-                                                    const geo_json=JSON.parse(data)
-                                                    formik.setFieldValue("geo_json", geo_json)
+                                                    MySwal.fire({
+                                                        title: "Kalkulasi Koordinat?",
+                                                        text: "Saat dikalkulasi akan mengupdate nilai Latitude dan Longitude!",
+                                                        icon: 'question',
+                                                        showCancelButton: true,
+                                                        confirmButtonText: 'Ya, Kalkukasi!',
+                                                        cancelButtonText: 'Jangan!',
+                                                        reverseButtons: true,
+                                                        customClass:{
+                                                            popup:"w-auto"
+                                                        }
+                                                    })
+                                                    .then(result=>{
+                                                        const geo_json=JSON.parse(data)
+                                                        formik.setFieldValue("geo_json", geo_json)
+
+                                                        if(result.isConfirmed){
+                                                            const feature={
+                                                                type:"Feature",
+                                                                properties:{},
+                                                                geometry:geo_json
+                                                            }
+                                                            const center=turf.center(feature)
+                                                            
+                                                            formik.setFieldValue("map_center.latitude", center.geometry.coordinates[1])
+                                                            formik.setFieldValue("map_center.longitude", center.geometry.coordinates[0])
+                                                        }
+                                                    })
                                                 }
                                                 catch(e){
                                                     toast.error("Geo JSON invalid!", {position:"bottom-center"})

@@ -3,7 +3,7 @@ import Link from "next/link"
 import Router, { useRouter } from "next/router"
 import React, { useEffect, useState } from "react"
 import { Collapse, Dropdown } from "react-bootstrap"
-import {FiArchive, FiBook, FiBookmark, FiChevronDown, FiCloudRain, FiEdit, FiEye, FiHelpCircle, FiHexagon, FiHome, FiLayers, FiLogOut, FiMail, FiMapPin, FiMenu, FiSettings, FiTruck, FiUser} from "react-icons/fi"
+import {FiArchive, FiBook, FiBookmark, FiChevronDown, FiCloudRain, FiEdit, FiEye, FiHelpCircle, FiHexagon, FiHome, FiLayers, FiLogOut, FiMail, FiMapPin, FiMeh, FiMenu, FiSettings, FiTruck, FiUser} from "react-icons/fi"
 import {api} from "../config/api"
 import { BASE_PATH, FRONTPAGE_URL, access_token, login_data as user_data } from "../config/config"
 import Avatar from "./ui/avatar"
@@ -37,6 +37,9 @@ const Layout=(props)=>{
         }
         if(['/admin/frontpage/footer/about', '/admin/frontpage/footer/menu', '/admin/frontpage/footer/partner'].includes(router.pathname)){
             setCollapse("frontpage_footer")
+        }
+        if(["/admin/curah_hujan", "/admin/curah_hujan/curah_hujan", "/admin/curah_hujan/curah_hujan_normal"].includes(router.pathname)){
+            setCollapse("curah_hujan")
         }
     }, [])
 
@@ -136,13 +139,59 @@ const Layout=(props)=>{
                         <li 
                             className={classNames(
                                 "nav-item", 
-                                {"active":active_page=="/admin/curah_hujan"}
+                                {"active":active_page=="/admin/sebaran_opt"}
                             )}
                         >
-                            <Link href="/admin/curah_hujan" className="nav-link">
+                            <Link href="/admin/sebaran_opt" className="nav-link">
+                                <FiMeh className="link-icon"/>
+                                <span className="link-title">Sebaran OPT</span>
+                            </Link>
+                        </li>
+                        <li 
+                            className={classNames(
+                                "nav-item",
+                                {"active":["/admin/curah_hujan", "/admin/curah_hujan/curah_hujan", "/admin/curah_hujan/curah_hujan_normal"].includes(active_page)}
+                            )}
+                        >
+                            <a 
+                                className="nav-link cursor-pointer" 
+                                onClick={e=>setCollapse(collapse=="curah_hujan"?"":"curah_hujan")} 
+                                aria-expanded={collapse=="curah_hujan"}
+                            >
                                 <FiCloudRain className="link-icon"/>
                                 <span className="link-title">Curah Hujan</span>
-                            </Link>
+                                <FiChevronDown className="link-arrow"/>
+                            </a>
+                            <Collapse in={collapse=="curah_hujan"}>
+                                <div>
+                                    <ul className="nav sub-menu">
+                                        <li className="nav-item">
+                                            <Link 
+                                                href="/admin/curah_hujan" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/curah_hujan"})}
+                                            >
+                                                Curah Hujan
+                                            </Link>
+                                        </li>
+                                        <li className="nav-item">
+                                            <Link 
+                                                href="/admin/curah_hujan/curah_hujan" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/curah_hujan/curah_hujan"})}
+                                            >
+                                                Edit Curah Hujan
+                                            </Link>
+                                        </li>
+                                        <li className="nav-item">
+                                            <Link 
+                                                href="/admin/curah_hujan/curah_hujan_normal" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/curah_hujan/curah_hujan_normal"})}
+                                            >
+                                                Edit Curah Hujan Normal
+                                            </Link>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </Collapse>
                         </li>
                         <li 
                             className={classNames(
