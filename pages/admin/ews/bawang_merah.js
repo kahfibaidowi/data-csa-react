@@ -22,6 +22,7 @@ import NumberFormat from "react-number-format"
 import VirtualTable, { VirtualTableContext } from "../../../component/ui/virtual_table"
 import BaseTable, {AutoResizer, Column} from "react-base-table"
 import DataGrid from 'react-data-grid'
+import * as _ from "underscore"
 
 
 
@@ -211,6 +212,7 @@ class Ews extends React.Component{
                                         }
                                         else{
                                             const data_curah_hujan={
+                                                id_curah_hujan:null,
                                                 id_region:kec.id_region,
                                                 tahun:params.tahun,
                                                 bulan:month,
@@ -778,26 +780,113 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
     }
     //--value tree
     const valueAkumulasiCH=(arr_curah_hujan)=>{
-        //calculace
-        if(arr_curah_hujan.length>0){
-            const sum_curah_hujan=arr_curah_hujan.reduce((carry, item)=>{
+        //calculate
+        var curah_hujan=arr_curah_hujan.filter(f=>f.curah_hujan!="")
+        if(curah_hujan.length>0){
+            const sum_curah_hujan=curah_hujan.reduce((carry, item)=>{
                 return Number(carry)+Number(item.curah_hujan)
             }, 0)
 
-            return sum_curah_hujan/arr_curah_hujan.length
+            return sum_curah_hujan/curah_hujan.length
         }
         return ""
+
     }
     const valueAkumulasiCHNormal=(arr_curah_hujan)=>{
-        //calculace
-        if(arr_curah_hujan.length>0){
-            const sum_curah_hujan=arr_curah_hujan.reduce((carry, item)=>{
+        //calculate
+        var curah_hujan=arr_curah_hujan.filter(f=>f.curah_hujan_normal!="")
+        if(curah_hujan.length>0){
+            const sum_curah_hujan=curah_hujan.reduce((carry, item)=>{
                 return Number(carry)+Number(item.curah_hujan_normal)
             }, 0)
 
-            return sum_curah_hujan/arr_curah_hujan.length
+            return sum_curah_hujan/curah_hujan.length
         }
         return ""
+    }
+    const valueProvinsiCurahHujanColumn=(idx_provinsi, idx_column)=>{
+        let curah_hujan=[]
+
+        data.data[idx_provinsi].kabupaten_kota.map((kabkota, idx)=>{
+            const avg_kabupaten_kota=valueKabupatenKotaCurahHujanColumn(idx_provinsi, idx, idx_column)
+
+            var ch_norm=avg_kabupaten_kota.filter(f=>f.curah_hujan_normal!="")
+            var ch_pred=avg_kabupaten_kota.filter(f=>f.curah_hujan!="")
+
+            const ch=ch_pred.reduce((carry, item)=>{
+                return Number(carry)+Number(item.curah_hujan)
+            }, 0)
+            const ch_normal=ch_norm.reduce((carry, item)=>{
+                return Number(carry)+Number(item.curah_hujan_normal)
+            }, 0)
+            
+            curah_hujan=curah_hujan.concat([{
+                id_curah_hujan:ch_pred.length>0?-1:null,
+                curah_hujan:ch_pred.length>0?ch/ch_pred.length:"",
+                curah_hujan_normal:ch_norm.length>0?ch_normal/ch_norm.length:""
+            }])
+        })
+
+        return curah_hujan
+    }
+    const valueKabupatenKotaCurahHujanColumn=(idx_provinsi, idx_kabupaten_kota, idx_column)=>{
+        let curah_hujan=[]
+
+        data.data[idx_provinsi].kabupaten_kota[idx_kabupaten_kota].kecamatan.map(kec=>{
+            curah_hujan=curah_hujan.concat([kec.curah_hujan[idx_column]])
+        })
+
+        return curah_hujan
+    }
+    const valueProvinsiCurahHujan=(idx_provinsi)=>{
+        let curah_hujan=[]
+
+        for(var i=0; i<36; i++){
+            const ch_provinsi_column=valueProvinsiCurahHujanColumn(idx_provinsi, i)
+
+            var ch_norm=ch_provinsi_column.filter(f=>f.curah_hujan_normal!="")
+            var ch_pred=ch_provinsi_column.filter(f=>f.curah_hujan!="")
+
+            const ch=ch_pred.reduce((carry, item)=>{
+                return Number(carry)+Number(item.curah_hujan)
+            }, 0)
+            const ch_normal=ch_norm.reduce((carry, item)=>{
+                return Number(carry)+Number(item.curah_hujan_normal)
+            }, 0)
+            
+            curah_hujan=curah_hujan.concat([{
+                id_curah_hujan:ch_pred.length>0?-1:null,
+                curah_hujan:ch_pred.length>0?ch/ch_pred.length:"",
+                curah_hujan_normal:ch_norm.length>0?ch_normal/ch_norm.length:""
+            }])
+        }
+
+        return curah_hujan
+    }
+    const valueKabupatenKotaCurahHujan=(idx_provinsi, idx_kabupaten_kota)=>{
+        let curah_hujan=[]
+
+        for(var i=0; i<36; i++){
+            const ch_kabupaten_kota_column=valueKabupatenKotaCurahHujanColumn(idx_provinsi, idx_kabupaten_kota, i)
+
+            var ch_norm=ch_kabupaten_kota_column.filter(f=>f.curah_hujan_normal!="")
+            var ch_pred=ch_kabupaten_kota_column.filter(f=>f.curah_hujan!="")
+
+            const ch=ch_pred.reduce((carry, item)=>{
+                return Number(carry)+Number(item.curah_hujan)
+            }, 0)
+            const ch_normal=ch_norm.reduce((carry, item)=>{
+                return Number(carry)+Number(item.curah_hujan_normal)
+            }, 0)
+            
+            curah_hujan=curah_hujan.concat([{
+                id_curah_hujan:ch_pred.length>0?-1:null,
+                curah_hujan:ch_pred.length>0?ch/ch_pred.length:"",
+                curah_hujan_normal:ch_norm.length>0?ch_normal/ch_norm.length:""
+            }])
+        }
+
+        return curah_hujan
     }
     const valueSumAkumulasiOptUtama=(arr_ews)=>{
         //calculace
@@ -820,40 +909,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
             return sum_produksi
         }
         return ""
-    }
-    const valueProvinsiCurahHujanColumn=(idx_provinsi, idx_column)=>{
-        let curah_hujan=[]
-
-        data.data[idx_provinsi].kabupaten_kota.map((kabkota, idx)=>{
-            const avg_kabupaten_kota=valueKabupatenKotaCurahHujanColumn(idx_provinsi, idx, idx_column)
-
-            if(avg_kabupaten_kota.length>0){
-                const ch=avg_kabupaten_kota.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan)
-                }, 0)
-                const ch_normal=avg_kabupaten_kota.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan_normal)
-                }, 0)
-
-                curah_hujan=curah_hujan.concat([{
-                    curah_hujan:ch/avg_kabupaten_kota.length,
-                    curah_hujan_normal:ch_normal/avg_kabupaten_kota.length
-                }])
-            }
-        })
-
-        return curah_hujan
-    }
-    const valueKabupatenKotaCurahHujanColumn=(idx_provinsi, idx_kabupaten_kota, idx_column)=>{
-        let curah_hujan=[]
-
-        data.data[idx_provinsi].kabupaten_kota[idx_kabupaten_kota].kecamatan.map(kec=>{
-            if(!isUndefined(kec.curah_hujan[idx_column].id_curah_hujan)){
-                curah_hujan=curah_hujan.concat([kec.curah_hujan[idx_column]])
-            }
-        })
-
-        return curah_hujan
     }
     const valueProvinsiEwsColumn=(idx_provinsi, idx_column)=>{
         let ews=[]
@@ -888,52 +943,6 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
         })
 
         return ews
-    }
-    const valueProvinsiCurahHujan=(idx_provinsi)=>{
-        let curah_hujan=[]
-
-        for(var i=0; i<36; i++){
-            const ch_provinsi_column=valueProvinsiCurahHujanColumn(idx_provinsi, i)
-
-            if(ch_provinsi_column.length>0){
-                const ch=ch_provinsi_column.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan)
-                }, 0)
-                const ch_normal=ch_provinsi_column.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan_normal)
-                }, 0)
-
-                curah_hujan=curah_hujan.concat([{
-                    curah_hujan:ch/ch_provinsi_column.length,
-                    curah_hujan_normal:ch_normal/ch_provinsi_column.length
-                }])
-            }
-        }
-
-        return curah_hujan
-    }
-    const valueKabupatenKotaCurahHujan=(idx_provinsi, idx_kabupaten_kota)=>{
-        let curah_hujan=[]
-
-        for(var i=0; i<36; i++){
-            const ch_kabupaten_kota_column=valueKabupatenKotaCurahHujanColumn(idx_provinsi, idx_kabupaten_kota, i)
-
-            if(ch_kabupaten_kota_column.length>0){
-                const ch=ch_kabupaten_kota_column.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan)
-                }, 0)
-                const ch_normal=ch_kabupaten_kota_column.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan_normal)
-                }, 0)
-
-                curah_hujan=curah_hujan.concat([{
-                    curah_hujan:ch/ch_kabupaten_kota_column.length,
-                    curah_hujan_normal:ch_normal/ch_kabupaten_kota_column.length
-                }])
-            }
-        }
-
-        return curah_hujan
     }
     const valueProvinsiEws=(idx_provinsi)=>{
         let ews=[]
@@ -1543,7 +1552,7 @@ const Table=({data, kabupaten_kota_form, provinsi_form, pulau_form, typeFilter, 
                     ch_normal=valueAkumulasiCHNormal(curah_hujan)
                 }
                 else if(row.type=="kecamatan"){
-                    const curah_hujan=row.curah_hujan.filter(f=>!isUndefined(f.id_curah_hujan))
+                    const curah_hujan=row.curah_hujan
 
                     ch=valueAkumulasiCH(curah_hujan)
                     ch_normal=valueAkumulasiCHNormal(curah_hujan)

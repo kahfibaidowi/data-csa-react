@@ -8,7 +8,7 @@ import { api } from "../../../config/api"
 import { access_token, isUndefined, readFile } from "../../../config/config"
 import { toast } from "react-toastify"
 import Router from "next/router"
-import { FiChevronLeft, FiChevronRight, FiEdit, FiMoreVertical, FiPlus, FiTrash, FiTrash2, FiUpload } from "react-icons/fi"
+import { FiChevronLeft, FiChevronRight, FiDownload, FiEdit, FiMoreVertical, FiPlus, FiTrash, FiTrash2, FiUpload } from "react-icons/fi"
 import Avatar from "../../../component/ui/avatar"
 import { Dropdown, Modal, Spinner } from "react-bootstrap"
 import swal from "sweetalert2"
@@ -21,6 +21,7 @@ import FileSaver from "file-saver"
 import { Formik } from "formik"
 import * as yup from "yup"
 import * as turf from "@turf/turf"
+import NumberFormat from "react-number-format"
 
 
 const MySwal=withReactContent(swal)
@@ -40,6 +41,9 @@ class Page extends React.Component{
             province_id:"",
             regency_id:"",
             is_loading:false
+        },
+        download_template:{
+            is_open:false
         },
         import_template:{
             is_open:false,
@@ -86,6 +90,12 @@ class Page extends React.Component{
             return await api(access_token()).get("/sebaran_opt", {
                 params:params,
                 signal:this.abortController.signal
+            })
+            .then(res=>res.data)
+        },
+        apiGetsSebaranOptRegion:async(params)=>{
+            return await api(access_token()).get("/sebaran_opt/type/region_kabupaten_kota", {
+                params:params
             })
             .then(res=>res.data)
         },
@@ -162,45 +172,75 @@ class Page extends React.Component{
             }
         })
     }
-    downloadTemplate=async()=>{
-        let aoa_sebaran_opt=[
-            [
-                "Tahun",
-                "Bulan",
-                "Komoditas",
-                "Opt",
-                "lts_ringan",
-                "lts_sedang",
-                "lts_berat",
-                "sum_lts",
-                "lts_puso"
+    downloadTemplate=async(values, actions)=>{
+        await this.request.apiGetsSebaranOptRegion(values)
+        .then(async data=>{
+            let kabkot=data.data
+
+            let aoa_sebaran_opt=[
+                [
+                    "regency_id(dont edit)",
+                    "Pulau",
+                    "Provinsi",
+                    "Kabupaten/Kota",
+                    "Tahun",
+                    "Bulan",
+                    "Komoditas",
+                    "Opt",
+                    "lts_ringan",
+                    "lts_sedang",
+                    "lts_berat",
+                    "sum_lts",
+                    "lts_puso"
+                ]
             ]
-        ]
-        
-        const workBook=new ExcelJS.Workbook()
-        const workSheet1=workBook.addWorksheet("Sheet 1")
-        workSheet1.addRows(aoa_sebaran_opt)
-        workSheet1.getRow(1).alignment={vertical:"middle"}
-        workSheet1.getRow(1).font={bold:true}
-        workSheet1.views=[
-            {state:"frozen", ySplit:1, xSplit:0}
-        ]
 
-
-        await workBook.xlsx.writeBuffer()
-        .then((data)=>{
-            let today=new Date()
-            let date=today.getFullYear()+
-                (today.getMonth()+1).toString().padStart(2, "0")+
-                today.getDate().toString().padStart(2, "0")+
-                today.getHours().toString().padStart(2, "0")+
-                today.getMinutes().toString().padStart(2, "0")+
-                today.getSeconds().toString().padStart(2, "0")
-
-            FileSaver.saveAs(new Blob([data]), date+"__template__sebaran-opt.xlsx")
+            let rows_merge=[]
+            for(var i=0; i<kabkot.length; i++){
+                const row=[
+                    kabkot[i].id_region,
+                    kabkot[i].parent?.data?.pulau,
+                    kabkot[i].parent?.region,
+                    kabkot[i].region,
+                    ...Array.apply(null, Array(9)).map(String.prototype.valueOf, "")
+                ]
+                rows_merge=rows_merge.concat(Array(Number(values.jml_data)).fill(row))
+            }
+            
+            const workBook=new ExcelJS.Workbook()
+            const workSheet1=workBook.addWorksheet("Sheet 1")
+            workSheet1.addRows(aoa_sebaran_opt)
+            workSheet1.addRows(rows_merge)
+            workSheet1.getColumn(1).hidden=true
+            workSheet1.getRow(1).alignment={vertical:"middle"}
+            workSheet1.getRow(1).font={bold:true}
+            workSheet1.views=[
+                {state:"frozen", ySplit:1, xSplit:0}
+            ]
+    
+    
+            await workBook.xlsx.writeBuffer()
+            .then((data)=>{
+                let today=new Date()
+                let date=today.getFullYear()+
+                    (today.getMonth()+1).toString().padStart(2, "0")+
+                    today.getDate().toString().padStart(2, "0")+
+                    today.getHours().toString().padStart(2, "0")+
+                    today.getMinutes().toString().padStart(2, "0")+
+                    today.getSeconds().toString().padStart(2, "0")
+    
+                FileSaver.saveAs(new Blob([data]), date+"__template__sebaran-opt.xlsx")
+            })
+            .catch(err => {
+                toast.error("Failed to create generated spreadsheet!", {position:"bottom-center"})
+            })
         })
-        .catch(err => {
-            toast.error("Failed to create generated spreadsheet!", {position:"bottom-center"})
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
         })
     }
     generateImportedExcel=async(file)=>{
@@ -218,19 +258,25 @@ class Page extends React.Component{
                 data_excel=data_excel.concat([
                     {
                         idx:row_num-2,
-                        tahun:row.getCell(1).value,
-                        bulan:row.getCell(2).value,
-                        komoditas:row.getCell(3).value,
-                        opt:row.getCell(4).value,
-                        lts_ringan:row.getCell(5).value,
-                        lts_sedang:row.getCell(6).value,
-                        lts_berat:row.getCell(7).value,
-                        sum_lts:row.getCell(8).value,
-                        lts_puso:row.getCell(9).value
+                        regency_id:row.getCell(1).value,
+                        pulau:row.getCell(2).value,
+                        provinsi:row.getCell(3).value,
+                        kabupaten_kota:row.getCell(4).value,
+                        tahun:row.getCell(5).value,
+                        bulan:row.getCell(6).value,
+                        komoditas:row.getCell(7).value,
+                        opt:row.getCell(8).value,
+                        lts_ringan:row.getCell(9).value,
+                        lts_sedang:row.getCell(10).value,
+                        lts_berat:row.getCell(11).value,
+                        sum_lts:row.getCell(12).value,
+                        lts_puso:row.getCell(13).value
                     }
                 ])
             }
         })
+
+        //for(var i=2)
 
         this.setState({
             import_template:{
@@ -243,7 +289,6 @@ class Page extends React.Component{
     }
     updateCurahHujanMultiple=async(values, actions)=>{
         await this.request.apiAddSebaranOptMultiple({
-            regency_id:values.regency_id,
             data:values.data
         })
         .then(data=>{
@@ -320,6 +365,13 @@ class Page extends React.Component{
     timeout=0
 
     //DATA ACTIONS
+    toggleModalDownloadTemplate=(is_open=false)=>{
+        this.setState({
+            download_template:{
+                is_open:is_open
+            }
+        })
+    }
     hideModalImportTemplate=()=>{
         this.setState({
             import_template:update(this.state.import_template, {
@@ -342,7 +394,7 @@ class Page extends React.Component{
 
     //RENDER
     render(){
-        const {sebaran_opt, provinsi_form, regency_form, import_template}=this.state
+        const {sebaran_opt, provinsi_form, regency_form, import_template, download_template}=this.state
 
         return (
             <>
@@ -362,7 +414,7 @@ class Page extends React.Component{
                                         href="#/download-template-excel" 
                                         onClick={e=>{
                                             e.preventDefault()
-                                            this.downloadTemplate()
+                                            this.toggleModalDownloadTemplate(true)
                                         }}
                                     >
                                         Download Template Excel
@@ -409,6 +461,12 @@ class Page extends React.Component{
                     onHide={this.hideModalImportTemplate}
                     importTemplate={this.updateCurahHujanMultiple}
                     request={this.request}
+                />
+
+                <ModalDownloadTemplate
+                    data={download_template}
+                    downloadTemplate={this.downloadTemplate}
+                    onHide={this.toggleModalDownloadTemplate}
                 />
             </>
         )
@@ -625,6 +683,224 @@ const Table=({data, provinsi_form, regency_form, setPerPage, goToPage, typeFilte
     )
 }
 
+//DOWNLOAD TEMPLATE
+const ModalDownloadTemplate=({data, downloadTemplate, onHide})=>{
+    const [pulau_form, setPulauForm]=useState([])
+    const [provinsi_form, setProvinsiForm]=useState([])
+
+    useEffect(()=>{
+        if(data.is_open){
+            fetchPulauForm()
+            setProvinsiForm([])
+        }
+    }, [data])
+
+    //request data
+    const request={
+        apiGetsPulauForm:async()=>{
+            return await api(access_token()).get("/region/type/pulau", {
+                params:{
+                    per_page:"",
+                    page:1,
+                    q:""
+                }
+            })
+            .then(res=>res.data)
+        },
+        apiGetsProvinsiForm:async(pulau)=>{
+            return await api(access_token()).get("/region/type/provinsi", {
+                params:{
+                    per_page:"",
+                    page:1,
+                    q:"",
+                    pulau:pulau
+                },
+            })
+            .then(res=>res.data)
+        }
+    }
+    //data
+    const fetchPulauForm=async()=>{
+        await request.apiGetsPulauForm()
+        .then(data=>{
+            setPulauForm(data.data)
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
+    const fetchProvinsiForm=async(pulau)=>{
+        await request.apiGetsProvinsiForm(pulau)
+        .then(data=>{
+            setProvinsiForm(data.data)
+        })
+        .catch(err=>{
+            if(err.response.status===401){
+                localStorage.removeItem("login_data")
+                Router.push("/login")
+            }
+            toast.error("Gets Data Failed!", {position:"bottom-center"})
+        })
+    }
+    
+    //options
+    const provinsi_options=()=>{
+        let data=provinsi_form.map(op=>{
+            return {label:op.region, value:op.id_region}
+        })
+        data=[{label:"Semua Provinsi", value:""}].concat(data)
+
+        return data
+    }
+    const pulau_options=()=>{
+        let data=pulau_form.map(p=>{
+            return {label:p.pulau, value:p.pulau}
+        })
+        data=[{label:"Semua Pulau", value:""}].concat(data)
+
+        return data
+    }
+
+    return (
+        <Modal 
+            show={data.is_open} 
+            onHide={onHide} 
+            backdrop="static" 
+            size="sm" 
+            className="modal-nested"
+            backdropClassName="backdrop-nested"
+            scrollable
+        >
+            <Formik
+                initialValues={{
+                    pulau:"",
+                    province_id:"",
+                    jml_data:10
+                }}
+                onSubmit={downloadTemplate}
+                validationSchema={
+                    yup.object().shape({
+                        pulau:yup.string().optional(),
+                        province_id:yup.string().optional(),
+                        jml_data:yup.number().required()
+                    })
+                }
+            >
+                {formik=>(
+                    <form onSubmit={formik.handleSubmit}>
+                        <Modal.Header closeButton>
+                            <h4 className="modal-title">Download Template Excel</h4>
+                        </Modal.Header>
+                        <Modal.Body>
+                            <div className="mb-2">
+                                <label className="my-1 me-2">Pulau</label>
+                                <Select
+                                    options={pulau_options()}
+                                    value={pulau_options().find(f=>f.value==formik.values.pulau)}
+                                    onChange={e=>{
+                                        setProvinsiForm([])
+                                        fetchProvinsiForm(e.value)
+                                        formik.setFieldValue("pulau", e.value)
+                                    }}
+                                    placeholder="Semua Pulau"
+                                    classNamePrefix="form-select"
+                                    menuPortalTarget={document.body}
+                                    styles={{
+                                        menuPortal:base=>({
+                                           ...base,
+                                           zIndex: 999999
+                                        })
+                                    }}
+                                />
+                            </div>
+                            <div className="mb-2">
+                                <label className="my-1 me-2">Provinsi</label>
+                                <Select
+                                    options={provinsi_options()}
+                                    value={provinsi_options().find(f=>f.value==formik.values.province_id)}
+                                    onChange={e=>{
+                                        formik.setFieldValue("province_id", e.value)
+                                    }}
+                                    placeholder="Semua Provinsi"
+                                    classNamePrefix="form-select"
+                                    menuPortalTarget={document.body}
+                                    styles={{
+                                        menuPortal:base=>({
+                                           ...base,
+                                           zIndex: 999999
+                                        })
+                                    }}
+                                />
+                            </div>
+                            <div className="mb-2">
+                                <label className="my-1 me-2">Data per Kabupaten/Kota</label>
+                                <NumberFormat
+                                    className="form-control"
+                                    thousandSeparator
+                                    value={formik.values.jml_data}
+                                    onValueChange={values=>{
+                                        const {value}=values
+                                        formik.setFieldValue("jml_data", value)
+                                    }}
+                                    allowNegative={false}
+                                />
+                                <span className="form-text">
+                                    <ol className="mt-4">
+                                        <li>Nilai Bulan antara 1-12</li>
+                                        <li>Jenis Komoditas : Aneka Cabai, Bawang Merah (Case Sensitif)</li>
+                                        <li>Proses input : jika Ada Tahun, Bulan, Komoditas, OPT, Region(Kabupaten/Kota) yang sama, Data yang sudah ada akan ditimpa, jika tidak ada akan menambah data baru</li>
+                                        <li>Nilai LTS Berupa Angka</li>
+                                        <li>jangan menambahkan data baris baru/mengedit kolom regency_id di excel, setiap baris terdapat id untuk mengenali kabupaten/kota!</li>
+                                        <li>jika anda ingin tetap menambah baris baru, copy baris di excel ini yang ingin anda tambahkan, pastikan regency_id sama dengan baris yang anda copy!</li>
+                                        <li>hapus data baris kabupaten/kota yang tidak diperlukan!</li>
+                                    </ol>
+                                </span>
+                            </div>
+                        </Modal.Body>
+                        <Modal.Footer className="mt-3 border-top pt-2">
+                            <button 
+                                type="button" 
+                                className="btn btn-link text-gray me-auto" 
+                                onClick={(e)=>onHide()}
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="submit" 
+                                className="btn btn-primary btn-icon-text"
+                                disabled={formik.isSubmitting||!(formik.isValid)}
+                            >
+                                {formik.isSubmitting?
+                                    <>
+                                        <Spinner
+                                            as="span"
+                                            animation="border"
+                                            size="sm"
+                                            role="status"
+                                            aria-hidden="true"
+                                            className="me-2 btn-icon-prepend"
+                                        />
+                                        Mendownload...
+                                    </>
+                                :
+                                    <>
+                                        <FiDownload className="btn-icon-prepend"/>
+                                        Download
+                                    </>
+                                }
+                            </button>
+                        </Modal.Footer>
+                    </form>
+                )}
+            </Formik>
+        </Modal>
+    )
+}
+
 //IMPORT TEMPLATE
 const ModalImportTemplate=({data, provinsi_form, onHide, importTemplate, request})=>{
     const [provinsi, setProvinsi]=useState([])
@@ -691,10 +967,36 @@ const ModalImportTemplate=({data, provinsi_form, onHide, importTemplate, request
             }
         },
         {
+            key: 'pulau',
+            name: 'Pulau',
+            resizable: true,
+            width: 120,
+            formatter:({row})=>{
+                return <span>{row.pulau}</span>
+            }
+        },
+        {
+            key: 'provinsi',
+            name: 'Provinsi',
+            resizable: true,
+            width: 150,
+            formatter:({row})=>{
+                return <span>{row.provinsi}</span>
+            }
+        },
+        {
+            key: 'kabupaten_kota',
+            name: 'Kabupaten/Kota',
+            resizable: true,
+            width: 180,
+            formatter:({row})=>{
+                return <span>{row.kabupaten_kota}</span>
+            }
+        },
+        {
             key: 'tahun',
             name: 'Tahun',
             width: 120,
-            frozen: true,
             formatter:({row})=>{
                 return <span>{row.tahun}</span>
             }
@@ -703,7 +1005,6 @@ const ModalImportTemplate=({data, provinsi_form, onHide, importTemplate, request
             key: 'bulan',
             name: 'Bulan',
             width: 120,
-            frozen: true,
             formatter:({row})=>{
                 return <span>{row.bulan}</span>
             }
@@ -713,7 +1014,6 @@ const ModalImportTemplate=({data, provinsi_form, onHide, importTemplate, request
             name: 'Komoditas',
             width: 180,
             resizable: true,
-            frozen: true,
             formatter:({row})=>{
                 return <span>{row.komoditas}</span>
             }
@@ -788,7 +1088,6 @@ const ModalImportTemplate=({data, provinsi_form, onHide, importTemplate, request
                 onSubmit={importTemplate}
                 validationSchema={
                     yup.object().shape({
-                        regency_id:yup.string().required(),
                         data:yup.array().required()
                     })
                 }
@@ -799,44 +1098,15 @@ const ModalImportTemplate=({data, provinsi_form, onHide, importTemplate, request
                             <h4 className="modal-title">Preview Import Excel (Sebaran OPT)</h4>
                         </Modal.Header>
                         <Modal.Body className="p-0">
-                            <div className="row mb-4">
-                                <div className="col-md-4 mx-auto">
-                                    <div className="mb-2">
-                                        <label className="my-1 me-2" for="country">Provinsi</label>
-                                        <Select
-                                            options={provinsi_options()}
-                                            value={provinsi_options().find(f=>f.value==formik.values.province_id)}
-                                            onChange={e=>{
-                                                formik.setFieldValue("province_id", e.value)
-                                                formik.setFieldValue("regency_id", "")
-                                                fetchRegencyForm(e.value)
-                                            }}
-                                            placeholder="Pilih Provinsi"
-                                            classNamePrefix="form-select"
-                                        />
-                                    </div>
-                                    <div className="mb-2">
-                                        <label className="my-1 me-2" for="country">Kabupaten/Kota</label>
-                                        <Select
-                                            options={regency_options()}
-                                            value={regency_options().find(f=>f.value==formik.values.regency_id)}
-                                            onChange={e=>{
-                                                formik.setFieldValue("regency_id", e.value)
-                                            }}
-                                            placeholder="Pilih Kabupaten/Kota"
-                                            classNamePrefix="form-select"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="mb-4">
-                                <ol>
-                                    <li>Nilai Bulan antara 1-12</li>
-                                    <li>Jenis Komoditas : Aneka Cabai, Bawang Merah (Case Sensitif)</li>
-                                    <li>Jika Ada Tahun, Bulan, Komoditas, OPT, Region(Kabupaten/Kota) yang sama, Data yang sudah ada akan ditimpa, jika tidak ada akan menambah data baru</li>
-                                    <li>Nilai LTS Berupa Angka</li>
-                                </ol>
-                            </div>
+                            <ol className="mb-4 mt-4">
+                                <li>Nilai Bulan antara 1-12</li>
+                                <li>Jenis Komoditas : Aneka Cabai, Bawang Merah (Case Sensitif)</li>
+                                <li>Proses input : jika Ada Tahun, Bulan, Komoditas, OPT, Region(Kabupaten/Kota) yang sama, Data yang sudah ada akan ditimpa, jika tidak ada akan menambah data baru</li>
+                                <li>Nilai LTS Berupa Angka</li>
+                                <li>jangan menambahkan data baris baru/mengedit kolom regency_id di excel, setiap baris terdapat id untuk mengenali kabupaten/kota!</li>
+                                <li>jika anda ingin tetap menambah baris baru, copy baris di excel ini yang ingin anda tambahkan, pastikan regency_id sama dengan baris yang anda copy!</li>
+                                <li>hapus data baris kabupaten/kota yang tidak diperlukan!</li>
+                            </ol>
                             <DataGrid
                                 rows={data.data}
                                 columns={columns}
@@ -858,7 +1128,7 @@ const ModalImportTemplate=({data, provinsi_form, onHide, importTemplate, request
                             <button 
                                 type="submit" 
                                 className="btn btn-primary btn-icon-text"
-                                disabled={formik.isSubmitting||!(formik.dirty&&formik.isValid)}
+                                disabled={formik.isSubmitting}
                             >
                                 <FiUpload className="btn-icon-prepend"/>
                                 Import Excel

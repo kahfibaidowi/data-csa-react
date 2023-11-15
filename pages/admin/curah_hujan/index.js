@@ -907,7 +907,7 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
     //--value tree
     const valueAkumulasiCH=(arr_curah_hujan)=>{
         //calculate
-        var curah_hujan=arr_curah_hujan.filter(f=>!_.isNull(f.id_curah_hujan))
+        var curah_hujan=arr_curah_hujan.filter(f=>f.curah_hujan!="")
         if(curah_hujan.length>0){
             const sum_curah_hujan=curah_hujan.reduce((carry, item)=>{
                 return Number(carry)+Number(item.curah_hujan)
@@ -919,13 +919,14 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
 
     }
     const valueAkumulasiCHNormal=(arr_curah_hujan)=>{
-        //calculace
-        if(arr_curah_hujan.length>0){
-            const sum_curah_hujan=arr_curah_hujan.reduce((carry, item)=>{
+        //calculate
+        var curah_hujan=arr_curah_hujan.filter(f=>f.curah_hujan_normal!="")
+        if(curah_hujan.length>0){
+            const sum_curah_hujan=curah_hujan.reduce((carry, item)=>{
                 return Number(carry)+Number(item.curah_hujan_normal)
             }, 0)
 
-            return sum_curah_hujan/arr_curah_hujan.length
+            return sum_curah_hujan/curah_hujan.length
         }
         return ""
     }
@@ -935,22 +936,21 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
         data.data[idx_provinsi].kabupaten_kota.map((kabkota, idx)=>{
             const avg_kabupaten_kota=valueKabupatenKotaCurahHujanColumn(idx_provinsi, idx, idx_column)
 
-            if(avg_kabupaten_kota.length>0){
-                var avg_ch_pred=avg_kabupaten_kota.filter(f=>!_.isNull(f.id_curah_hujan))
+            var ch_norm=avg_kabupaten_kota.filter(f=>f.curah_hujan_normal!="")
+            var ch_pred=avg_kabupaten_kota.filter(f=>f.curah_hujan!="")
 
-                const ch=avg_ch_pred.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan)
-                }, 0)
-                const ch_normal=avg_kabupaten_kota.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan_normal)
-                }, 0)
-
-                curah_hujan=curah_hujan.concat([{
-                    id_curah_hujan:avg_ch_pred.length>0?-1:null,
-                    curah_hujan:avg_ch_pred.length>0?ch/avg_ch_pred.length:"",
-                    curah_hujan_normal:ch_normal/avg_kabupaten_kota.length
-                }])
-            }
+            const ch=ch_pred.reduce((carry, item)=>{
+                return Number(carry)+Number(item.curah_hujan)
+            }, 0)
+            const ch_normal=ch_norm.reduce((carry, item)=>{
+                return Number(carry)+Number(item.curah_hujan_normal)
+            }, 0)
+            
+            curah_hujan=curah_hujan.concat([{
+                id_curah_hujan:ch_pred.length>0?-1:null,
+                curah_hujan:ch_pred.length>0?ch/ch_pred.length:"",
+                curah_hujan_normal:ch_norm.length>0?ch_normal/ch_norm.length:""
+            }])
         })
 
         return curah_hujan
@@ -959,9 +959,7 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
         let curah_hujan=[]
 
         data.data[idx_provinsi].kabupaten_kota[idx_kabupaten_kota].kecamatan.map(kec=>{
-            if(!_.isUndefined(kec.curah_hujan[idx_column].id_curah_hujan)){
-                curah_hujan=curah_hujan.concat([kec.curah_hujan[idx_column]])
-            }
+            curah_hujan=curah_hujan.concat([kec.curah_hujan[idx_column]])
         })
 
         return curah_hujan
@@ -972,21 +970,21 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
         for(var i=0; i<36; i++){
             const ch_provinsi_column=valueProvinsiCurahHujanColumn(idx_provinsi, i)
 
-            if(ch_provinsi_column.length>0){
-                var ch_pred=ch_provinsi_column.filter(f=>!_.isNull(f.id_curah_hujan))
-                const ch=ch_pred.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan)
-                }, 0)
-                const ch_normal=ch_provinsi_column.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan_normal)
-                }, 0)
+            var ch_norm=ch_provinsi_column.filter(f=>f.curah_hujan_normal!="")
+            var ch_pred=ch_provinsi_column.filter(f=>f.curah_hujan!="")
 
-                curah_hujan=curah_hujan.concat([{
-                    id_curah_hujan:ch_pred.length>0?-1:null,
-                    curah_hujan:ch_pred.length>0?ch/ch_pred.length:"",
-                    curah_hujan_normal:ch_normal/ch_provinsi_column.length
-                }])
-            }
+            const ch=ch_pred.reduce((carry, item)=>{
+                return Number(carry)+Number(item.curah_hujan)
+            }, 0)
+            const ch_normal=ch_norm.reduce((carry, item)=>{
+                return Number(carry)+Number(item.curah_hujan_normal)
+            }, 0)
+            
+            curah_hujan=curah_hujan.concat([{
+                id_curah_hujan:ch_pred.length>0?-1:null,
+                curah_hujan:ch_pred.length>0?ch/ch_pred.length:"",
+                curah_hujan_normal:ch_norm.length>0?ch_normal/ch_norm.length:""
+            }])
         }
 
         return curah_hujan
@@ -997,22 +995,21 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
         for(var i=0; i<36; i++){
             const ch_kabupaten_kota_column=valueKabupatenKotaCurahHujanColumn(idx_provinsi, idx_kabupaten_kota, i)
 
-            if(ch_kabupaten_kota_column.length>0){
-                var ch_pred=ch_kabupaten_kota_column.filter(f=>!_.isNull(f.id_curah_hujan))
+            var ch_norm=ch_kabupaten_kota_column.filter(f=>f.curah_hujan_normal!="")
+            var ch_pred=ch_kabupaten_kota_column.filter(f=>f.curah_hujan!="")
 
-                const ch=ch_pred.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan)
-                }, 0)
-                const ch_normal=ch_kabupaten_kota_column.reduce((carry, item)=>{
-                    return Number(carry)+Number(item.curah_hujan_normal)
-                }, 0)
-
-                curah_hujan=curah_hujan.concat([{
-                    id_curah_hujan:ch_pred.length>0?-1:null,
-                    curah_hujan:ch_pred.length>0?ch/ch_pred.length:"",
-                    curah_hujan_normal:ch_normal/ch_kabupaten_kota_column.length
-                }])
-            }
+            const ch=ch_pred.reduce((carry, item)=>{
+                return Number(carry)+Number(item.curah_hujan)
+            }, 0)
+            const ch_normal=ch_norm.reduce((carry, item)=>{
+                return Number(carry)+Number(item.curah_hujan_normal)
+            }, 0)
+            
+            curah_hujan=curah_hujan.concat([{
+                id_curah_hujan:ch_pred.length>0?-1:null,
+                curah_hujan:ch_pred.length>0?ch/ch_pred.length:"",
+                curah_hujan_normal:ch_norm.length>0?ch_normal/ch_norm.length:""
+            }])
         }
 
         return curah_hujan
@@ -1567,7 +1564,7 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
                     ch_normal=valueAkumulasiCHNormal(curah_hujan)
                 }
                 else if(row.type=="kecamatan"){
-                    const curah_hujan=row.curah_hujan.filter(f=>!_.isNull(f.id_curah_hujan))
+                    const curah_hujan=row.curah_hujan
 
                     ch=valueAkumulasiCH(curah_hujan)
                     ch_normal=valueAkumulasiCHNormal(curah_hujan)

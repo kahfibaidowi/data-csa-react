@@ -1978,9 +1978,13 @@ const ModalDownloadTemplate=({data, downloadTemplate, onHide})=>{
                                     }}
                                 />
                             </div>
-                            <div className="mt-4">
-                                <span className="form-text">*CH Prediksi dan CH Normal harus diisi di baris kolom yg dipilih, jika tidak diisi atau salah satu diisi maka akan diabaikan!</span>
-                            </div>
+                            <span className="form-text">
+                                <ol className="mt-4">
+                                    <li>jangan menambahkan data baris baru/mengedit kolom district_id di excel, setiap baris terdapat id untuk mengenali kecamatan!</li>
+                                    <li>Isilah Hanya inputan CH Normal dari template excel!</li>
+                                    <li>Proses input : jika belum ada data di bulan yang diinput akan menambahkan data, jika sudah ada, data akan ditimpa!</li>
+                                </ol>
+                            </span>
                         </Modal.Body>
                         <Modal.Footer className="mt-3 border-top pt-2">
                             <button 
@@ -1995,8 +1999,24 @@ const ModalDownloadTemplate=({data, downloadTemplate, onHide})=>{
                                 className="btn btn-primary btn-icon-text"
                                 disabled={formik.isSubmitting||!(formik.isValid)}
                             >
-                                <FiDownload className="btn-icon-prepend"/>
-                                Download
+                                {formik.isSubmitting?
+                                    <>
+                                        <Spinner
+                                            as="span"
+                                            animation="border"
+                                            size="sm"
+                                            role="status"
+                                            aria-hidden="true"
+                                            className="me-2 btn-icon-prepend"
+                                        />
+                                        Mendownload...
+                                    </>
+                                :
+                                    <>
+                                        <FiDownload className="btn-icon-prepend"/>
+                                        Download
+                                    </>
+                                }
                             </button>
                         </Modal.Footer>
                     </form>
@@ -2103,6 +2123,13 @@ const ModalImportTemplate=({data, onHide, importTemplate})=>{
                 <h4 className="modal-title">Preview Import Excel (CH Normal)</h4>
             </Modal.Header>
             <Modal.Body className="p-0">
+                <div className="mt-4 mb-4">
+                    <ol>
+                        <li>jangan menambahkan data baris baru/mengedit kolom district_id di excel, setiap baris terdapat id untuk mengenali kecamatan!</li>
+                        <li>Isilah Hanya inputan CH Normal dari template excel!</li>
+                        <li>Proses input : jika belum ada data di bulan yang diinput akan menambahkan data, jika sudah ada, data akan ditimpa!</li>
+                    </ol>
+                </div>
                 <DataGrid
                     rows={data.data.template}
                     columns={columns}

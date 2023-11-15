@@ -159,7 +159,7 @@ const Layout=(props)=>{
                                 aria-expanded={collapse=="curah_hujan"}
                             >
                                 <FiCloudRain className="link-icon"/>
-                                <span className="link-title">Curah Hujan</span>
+                                <span className="link-title">Big Data Curah Hujan</span>
                                 <FiChevronDown className="link-arrow"/>
                             </a>
                             <Collapse in={collapse=="curah_hujan"}>
@@ -170,7 +170,7 @@ const Layout=(props)=>{
                                                 href="/admin/curah_hujan" 
                                                 className={classNames("nav-link", {"active":active_page=="/admin/curah_hujan"})}
                                             >
-                                                Curah Hujan
+                                                Detail Data Curah Hujan
                                             </Link>
                                         </li>
                                         <li className="nav-item">
@@ -178,7 +178,7 @@ const Layout=(props)=>{
                                                 href="/admin/curah_hujan/curah_hujan" 
                                                 className={classNames("nav-link", {"active":active_page=="/admin/curah_hujan/curah_hujan"})}
                                             >
-                                                Edit Curah Hujan
+                                                Update Curah Hujan Prediksi
                                             </Link>
                                         </li>
                                         <li className="nav-item">
@@ -186,7 +186,7 @@ const Layout=(props)=>{
                                                 href="/admin/curah_hujan/curah_hujan_normal" 
                                                 className={classNames("nav-link", {"active":active_page=="/admin/curah_hujan/curah_hujan_normal"})}
                                             >
-                                                Edit Curah Hujan Normal
+                                                Update Curah Hujan Normal
                                             </Link>
                                         </li>
                                     </ul>
