@@ -38,7 +38,7 @@ const Layout=(props)=>{
         if(['/admin/frontpage/footer/about', '/admin/frontpage/footer/menu', '/admin/frontpage/footer/partner'].includes(router.pathname)){
             setCollapse("frontpage_footer")
         }
-        if(["/admin/curah_hujan", "/admin/curah_hujan/curah_hujan", "/admin/curah_hujan/curah_hujan_normal"].includes(router.pathname)){
+        if(["/admin/curah_hujan", "/admin/curah_hujan/curah_hujan", "/admin/curah_hujan/curah_hujan_normal", "/admin/curah_hujan/curah_hujan_activity"].includes(router.pathname)){
             setCollapse("curah_hujan")
         }
     }, [])
@@ -150,7 +150,7 @@ const Layout=(props)=>{
                         <li 
                             className={classNames(
                                 "nav-item",
-                                {"active":["/admin/curah_hujan", "/admin/curah_hujan/curah_hujan", "/admin/curah_hujan/curah_hujan_normal"].includes(active_page)}
+                                {"active":["/admin/curah_hujan", "/admin/curah_hujan/curah_hujan", "/admin/curah_hujan/curah_hujan_normal", "/admin/curah_hujan/curah_hujan_activity"].includes(active_page)}
                             )}
                         >
                             <a 
@@ -179,6 +179,14 @@ const Layout=(props)=>{
                                                 className={classNames("nav-link", {"active":active_page=="/admin/curah_hujan/curah_hujan"})}
                                             >
                                                 Update Curah Hujan Prediksi
+                                            </Link>
+                                        </li>
+                                        <li className="nav-item">
+                                            <Link 
+                                                href="/admin/curah_hujan/curah_hujan_activity" 
+                                                className={classNames("nav-link", {"active":active_page=="/admin/curah_hujan/curah_hujan_activity"})}
+                                            >
+                                                Activity Curah Hujan Prediksi
                                             </Link>
                                         </li>
                                         <li className="nav-item">

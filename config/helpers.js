@@ -12,6 +12,20 @@ export const arrayMonths=[
     "November",
     "Desember"
 ]
+export const arrayMonthsShort=[
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "Mei", 
+    "Jun",
+    "Jul",
+    "Ags",
+    "Sep",
+    "Okt",
+    "Nov",
+    "Des"
+]
 export const sheetColumn=(col)=>{
     let n=col-1
 
