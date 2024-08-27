@@ -1679,16 +1679,6 @@ const Table=({data, typeFilter, toggleModalEdit, setData, setCurahHujan, toggleM
                             </div>
                         </div>
                         <div className="ms-auto d-flex">
-                            <div style={{width:"200px"}} className="me-3 position-relative">
-                                <CreatableSelect
-                                    options={tahun_options()}
-                                    onChange={e=>{
-                                        typeFilter({target:{name:"tahun", value:e.value}})
-                                    }}
-                                    value={tahun_options().find(f=>f.value==data.tahun)}
-                                    placeholder="Pilih Tahun"
-                                />
-                            </div>
                             <button className="btn btn-light btn-icon ms-1" type="button" onClick={e=>setFullScreen(false)} title="close full screen">
                                 <FiX className="icon"/>
                             </button>

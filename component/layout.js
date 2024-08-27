@@ -3,7 +3,7 @@ import Link from "next/link"
 import Router, { useRouter } from "next/router"
 import React, { useEffect, useState } from "react"
 import { Collapse, Dropdown } from "react-bootstrap"
-import {FiArchive, FiBook, FiBookmark, FiChevronDown, FiCloudRain, FiEdit, FiEye, FiHelpCircle, FiHexagon, FiHome, FiLayers, FiLogOut, FiMail, FiMapPin, FiMeh, FiMenu, FiSettings, FiTruck, FiUser} from "react-icons/fi"
+import {FiArchive, FiBook, FiBookmark, FiChevronDown, FiCloudRain, FiColumns, FiEdit, FiEye, FiHelpCircle, FiHexagon, FiHome, FiLayers, FiLogOut, FiMail, FiMapPin, FiMeh, FiMenu, FiSettings, FiTruck, FiUser} from "react-icons/fi"
 import {api} from "../config/api"
 import { BASE_PATH, FRONTPAGE_URL, access_token, login_data as user_data } from "../config/config"
 import Avatar from "./ui/avatar"
@@ -145,6 +145,17 @@ const Layout=(props)=>{
                             <Link href="/admin/sebaran_opt" className="nav-link">
                                 <FiMeh className="link-icon"/>
                                 <span className="link-title">Sebaran OPT</span>
+                            </Link>
+                        </li>
+                        <li 
+                            className={classNames(
+                                "nav-item", 
+                                {"active":active_page=="/admin/bantuan_dpi"}
+                            )}
+                        >
+                            <Link href="/admin/bantuan_dpi" className="nav-link">
+                                <FiColumns className="link-icon"/>
+                                <span className="link-title">Bantuan DPI</span>
                             </Link>
                         </li>
                         <li 
