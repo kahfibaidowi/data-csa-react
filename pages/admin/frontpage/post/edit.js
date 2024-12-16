@@ -29,7 +29,7 @@ class Index extends React.Component{
     state={
         post_id:"",
         type:"post",
-        kategori:["mboh", "2", "tidak tau"],
+        kategori:[],
         edit_post:{
             title:"",
             kategori:[],
