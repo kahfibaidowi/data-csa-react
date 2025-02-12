@@ -21,6 +21,7 @@ import FileSaver from "file-saver"
 import { Formik } from "formik"
 import * as yup from "yup"
 import * as turf from "@turf/turf"
+import * as _ from "underscore"
 import NumberFormat from "react-number-format"
 
 
@@ -266,11 +267,11 @@ class Page extends React.Component{
                         bulan:row.getCell(6).value,
                         komoditas:row.getCell(7).value,
                         opt:row.getCell(8).value,
-                        lts_ringan:row.getCell(9).value,
-                        lts_sedang:row.getCell(10).value,
-                        lts_berat:row.getCell(11).value,
-                        sum_lts:row.getCell(12).value,
-                        lts_puso:row.getCell(13).value
+                        lts_ringan:!_.isNull(row.getCell(9).value)?row.getCell(9).value:"",
+                        lts_sedang:!_.isNull(row.getCell(10).value)?row.getCell(10).value:"",
+                        lts_berat:!_.isNull(row.getCell(11).value)?row.getCell(11).value:"",
+                        sum_lts:!_.isNull(row.getCell(12).value)?row.getCell(12).value:"",
+                        lts_puso:!_.isNull(row.getCell(13).value)?row.getCell(13).value:""
                     }
                 ])
             }
