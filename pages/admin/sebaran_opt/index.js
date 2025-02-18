@@ -101,7 +101,7 @@ class Page extends React.Component{
             .then(res=>res.data)
         },
         apiAddSebaranOptMultiple:async(params)=>{
-            return await api(access_token()).post("/sebaran_opt/type/multiple", params).then(res=>res.data)
+            return await api(access_token()).post("/sebaran_opt/type/import_chunks", params).then(res=>res.data)
         }
     }
     //--data
@@ -186,13 +186,27 @@ class Page extends React.Component{
                     "Kabupaten/Kota",
                     "Tahun",
                     "Bulan",
+                    "Periode",
+                    "Kategori",
                     "Komoditas",
+                    "Jenis Varietas",
+                    "Satuan",
                     "Opt",
                     "lts_ringan",
                     "lts_sedang",
                     "lts_berat",
+                    "lts_puso",
+                    "lks_ringan",
+                    "lks_sedang",
+                    "lks_berat",
+                    "lks_puso",
+                    "lp_pemusnahan",
+                    "lp_pestisida_kimia",
+                    "lp_cara_lain",
+                    "lp_agens_hayati",
                     "sum_lts",
-                    "lts_puso"
+                    "sum_lks",
+                    "sum_lp"
                 ]
             ]
 
@@ -203,7 +217,7 @@ class Page extends React.Component{
                     kabkot[i].parent?.data?.pulau,
                     kabkot[i].parent?.region,
                     kabkot[i].region,
-                    ...Array.apply(null, Array(9)).map(String.prototype.valueOf, "")
+                    ...Array.apply(null, Array(23)).map(String.prototype.valueOf, "")
                 ]
                 rows_merge=rows_merge.concat(Array(Number(values.jml_data)).fill(row))
             }
@@ -255,29 +269,48 @@ class Page extends React.Component{
 
         workSheet.eachRow((row, row_num)=>{
             if(row_num>1){
+                // const data=[13,14,15,16,17,18,19,20,21,22,23,24,25,26,27]
+                // for(var i=0; i<data.length; i++){
+                //     if(!_.isNull(row.getCell(data[i]).value) && !_.isNumber(row.getCell(data[i]).value)){
+                //         console.log("error row : ", row_num)
+                //         break
+                //     }
+                // }
 
                 data_excel=data_excel.concat([
                     {
                         idx:row_num-2,
                         regency_id:row.getCell(1).value,
-                        pulau:row.getCell(2).value,
-                        provinsi:row.getCell(3).value,
-                        kabupaten_kota:row.getCell(4).value,
-                        tahun:row.getCell(5).value,
-                        bulan:row.getCell(6).value,
-                        komoditas:row.getCell(7).value,
-                        opt:row.getCell(8).value,
-                        lts_ringan:!_.isNull(row.getCell(9).value)?row.getCell(9).value:"",
-                        lts_sedang:!_.isNull(row.getCell(10).value)?row.getCell(10).value:"",
-                        lts_berat:!_.isNull(row.getCell(11).value)?row.getCell(11).value:"",
-                        sum_lts:!_.isNull(row.getCell(12).value)?row.getCell(12).value:"",
-                        lts_puso:!_.isNull(row.getCell(13).value)?row.getCell(13).value:""
+                        pulau:row.getCell(2).value.toString(),
+                        provinsi:row.getCell(3).value.toString(),
+                        kabupaten_kota:row.getCell(4).value.toString(),
+                        tahun:!_.isNull(row.getCell(5).value)?row.getCell(5).value:"",
+                        bulan:!_.isNull(row.getCell(6).value)?row.getCell(6).value:"",
+                        periode:!_.isNull(row.getCell(7).value)?row.getCell(7).value:"",
+                        kategori:!_.isNull(row.getCell(8).value)?row.getCell(8).value:"",
+                        komoditas:!_.isNull(row.getCell(9).value)?row.getCell(9).value:"",
+                        jenis_varietas:!_.isNull(row.getCell(10).value)?row.getCell(10).value:"",
+                        satuan:!_.isNull(row.getCell(11).value)?row.getCell(11).value.toString():"",
+                        opt:!_.isNull(row.getCell(12).value)?row.getCell(12).value.toString():"",
+                        lts_ringan:!_.isNull(row.getCell(13).value)?row.getCell(13).value:"",
+                        lts_sedang:!_.isNull(row.getCell(14).value)?row.getCell(14).value:"",
+                        lts_berat:!_.isNull(row.getCell(15).value)?row.getCell(15).value:"",
+                        lts_puso:!_.isNull(row.getCell(16).value)?row.getCell(16).value:"",
+                        lks_ringan:!_.isNull(row.getCell(17).value)?row.getCell(17).value:"",
+                        lks_sedang:!_.isNull(row.getCell(18).value)?row.getCell(18).value:"",
+                        lks_berat:!_.isNull(row.getCell(19).value)?row.getCell(19).value:"",
+                        lks_puso:!_.isNull(row.getCell(20).value)?row.getCell(20).value:"",
+                        lp_pemusnahan:!_.isNull(row.getCell(21).value)?row.getCell(21).value:"",
+                        lp_pestisida_kimia:!_.isNull(row.getCell(22).value)?row.getCell(22).value:"",
+                        lp_cara_lain:!_.isNull(row.getCell(23).value)?row.getCell(23).value:"",
+                        lp_agens_hayati:!_.isNull(row.getCell(24).value)?row.getCell(24).value:"",
+                        sum_lts:!_.isNull(row.getCell(25).value)?row.getCell(25).value:"",
+                        sum_lks:!_.isNull(row.getCell(26).value)?row.getCell(26).value:"",
+                        sum_lp:!_.isNull(row.getCell(27).value)?row.getCell(27).value:""
                     }
                 ])
             }
         })
-
-        //for(var i=2)
 
         this.setState({
             import_template:{
@@ -580,17 +613,31 @@ const Table=({data, provinsi_form, regency_form, setPerPage, goToPage, typeFilte
                             <thead className="thead-light">
                                 <tr>
                                     <th className="" width="50">#</th>
-                                    <th className="">Bulan</th>
-                                    <th className="">Tahun</th>
                                     <th className="">Provinsi</th>
                                     <th className="">Kabupaten/Kota</th>
+                                    <th className="">Bulan</th>
+                                    <th className="">Tahun</th>
+                                    <th className="">Periode</th>
+                                    <th className="">Kategori</th>
                                     <th className="">Komoditas</th>
+                                    <th className="">Jenis Varietas</th>
+                                    <th className="">Satuan</th>
                                     <th className="">Jenis OPT</th>
                                     <th className="">LTS (Ringan)</th>
                                     <th className="">LTS (Sedang)</th>
                                     <th className="">LTS (Berat)</th>
-                                    <th className="">Sum of Total LTS</th>
                                     <th className="">LTS (Puso)</th>
+                                    <th className="">LKS (Ringan)</th>
+                                    <th className="">LKS (Sedang)</th>
+                                    <th className="">LKS (Berat)</th>
+                                    <th className="">LKS (Puso)</th>
+                                    <th className="">LP (Pemusnahan)</th>
+                                    <th className="">LP (Pestisida Kimia)</th>
+                                    <th className="">LP (Cara Lain)</th>
+                                    <th className="">LP (Agens Hayati)</th>
+                                    <th className="">SUM LTS</th>
+                                    <th className="">SUM LKS</th>
+                                    <th className="">SUM LP</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -599,28 +646,42 @@ const Table=({data, provinsi_form, regency_form, setPerPage, goToPage, typeFilte
                                         {data.data.map((list, idx)=>(
                                             <tr key={list}>
                                                 <td className="align-middle">{(idx+1)+((data.page-1)*data.per_page)}</td>
-                                                <td>{list.bulan}</td>
-                                                <td>{list.tahun}</td>
                                                 <td>{list.region.parent.region}</td>
                                                 <td>{list.region.region}</td>
+                                                <td>{list.bulan}</td>
+                                                <td>{list.tahun}</td>
+                                                <td>{list.periode}</td>
+                                                <td>{list.kategori}</td>
                                                 <td>{list.komoditas}</td>
+                                                <td>{list.jenis_varietas}</td>
+                                                <td>{list.satuan}</td>
                                                 <td>{list.opt}</td>
                                                 <td>{list.lts_ringan}</td>
                                                 <td>{list.lts_sedang}</td>
                                                 <td>{list.lts_berat}</td>
-                                                <td>{list.sum_lts}</td>
                                                 <td>{list.lts_puso}</td>
+                                                <td>{list.lks_ringan}</td>
+                                                <td>{list.lks_sedang}</td>
+                                                <td>{list.lks_berat}</td>
+                                                <td>{list.lks_puso}</td>
+                                                <td>{list.lp_pemusnahan}</td>
+                                                <td>{list.lp_pestisida_kimia}</td>
+                                                <td>{list.lp_cara_lain}</td>
+                                                <td>{list.lp_agens_hayati}</td>
+                                                <td>{list.sum_lts}</td>
+                                                <td>{list.sum_lks}</td>
+                                                <td>{list.sum_lp}</td>
                                             </tr>
                                         ))}
                                         {data.data.length==0&&
                                             <tr>
-                                                <td colSpan={12} className="text-center">Data tidak ditemukan!</td>
+                                                <td colSpan={26} className="text-center">Data tidak ditemukan!</td>
                                             </tr>
                                         }
                                     </>
                                 :
                                     <tr>
-                                        <td colSpan={12} className="text-center">
+                                        <td colSpan={26} className="text-center">
                                             <div className="d-flex align-items-center justify-content-center">
                                                 <Spinner
                                                     as="span"
@@ -853,8 +914,7 @@ const ModalDownloadTemplate=({data, downloadTemplate, onHide})=>{
                                     <ol className="mt-4">
                                         <li>Nilai Bulan antara 1-12</li>
                                         <li>Jenis Komoditas : Aneka Cabai, Bawang Merah (Case Sensitif)</li>
-                                        <li>Proses input : jika Ada Tahun, Bulan, Komoditas, OPT, Region(Kabupaten/Kota) yang sama, Data yang sudah ada akan ditimpa, jika tidak ada akan menambah data baru</li>
-                                        <li>Nilai LTS Berupa Angka</li>
+                                        <li>Nilai LTS, LKS, LP Berupa Angka</li>
                                         <li>jangan menambahkan data baris baru/mengedit kolom regency_id di excel, setiap baris terdapat id untuk mengenali kabupaten/kota!</li>
                                         <li>jika anda ingin tetap menambah baris baru, copy baris di excel ini yang ingin anda tambahkan, pastikan regency_id sama dengan baris yang anda copy!</li>
                                         <li>hapus data baris kabupaten/kota yang tidak diperlukan!</li>
@@ -1011,12 +1071,46 @@ const ModalImportTemplate=({data, provinsi_form, onHide, importTemplate, request
             }
         },
         {
+            key: 'periode',
+            name: 'Periode',
+            width: 120,
+            formatter:({row})=>{
+                return <span>{row.periode}</span>
+            }
+        },
+        {
+            key: 'kategori',
+            name: 'Kategori',
+            width: 120,
+            formatter:({row})=>{
+                return <span>{row.kategori}</span>
+            }
+        },
+        {
             key: 'komoditas',
             name: 'Komoditas',
             width: 180,
             resizable: true,
             formatter:({row})=>{
                 return <span>{row.komoditas}</span>
+            }
+        },
+        {
+            key: 'jenis_varietas',
+            name: 'Jenis Varietas',
+            width: 180,
+            resizable: true,
+            formatter:({row})=>{
+                return <span>{row.jenis_varietas}</span>
+            }
+        },
+        {
+            key: 'satuan',
+            name: 'Satuan',
+            width: 180,
+            resizable: true,
+            formatter:({row})=>{
+                return <span>{row.satuan}</span>
             }
         },
         {
@@ -1056,6 +1150,87 @@ const ModalImportTemplate=({data, provinsi_form, onHide, importTemplate, request
             }
         },
         {
+            key: 'lts_puso',
+            name: 'lts_puso',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                return <span>{row.lts_puso}</span>
+            }
+        },
+        {
+            key: 'lks_ringan',
+            name: 'lks_ringan',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                return <span>{row.lks_ringan}</span>
+            }
+        },
+        {
+            key: 'lks_sedang',
+            name: 'lks_sedang',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                return <span>{row.lks_sedang}</span>
+            }
+        },
+        {
+            key: 'lks_berat',
+            name: 'lks_berat',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                return <span>{row.lks_berat}</span>
+            }
+        },
+        {
+            key: 'lks_puso',
+            name: 'lks_puso',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                return <span>{row.lks_puso}</span>
+            }
+        },
+        {
+            key: 'lp_pemusnahan',
+            name: 'lp_pemusnahan',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                return <span>{row.lp_pemusnahan}</span>
+            }
+        },
+        {
+            key: 'lp_pestisida_kimia',
+            name: 'lp_pestisida_kimia',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                return <span>{row.lp_pestisida_kimia}</span>
+            }
+        },
+        {
+            key: 'lp_cara_lain',
+            name: 'lp_cara_lain',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                return <span>{row.lp_cara_lain}</span>
+            }
+        },
+        {
+            key: 'lp_agens_hayati',
+            name: 'lp_agens_hayati',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                return <span>{row.lp_agens_hayati}</span>
+            }
+        },
+        {
             key: 'sum_lts',
             name: 'sum_lts',
             width: 150,
@@ -1065,12 +1240,21 @@ const ModalImportTemplate=({data, provinsi_form, onHide, importTemplate, request
             }
         },
         {
-            key: 'lts_puso',
-            name: 'lts_puso',
+            key: 'sum_lks',
+            name: 'sum_lks',
             width: 150,
             resizable: true,
             formatter:({row})=>{
-                return <span>{row.lts_puso}</span>
+                return <span>{row.sum_lks}</span>
+            }
+        },
+        {
+            key: 'sum_lp',
+            name: 'sum_lp',
+            width: 150,
+            resizable: true,
+            formatter:({row})=>{
+                return <span>{row.sum_lp}</span>
             }
         },
     ]
@@ -1102,8 +1286,7 @@ const ModalImportTemplate=({data, provinsi_form, onHide, importTemplate, request
                             <ol className="mb-4 mt-4">
                                 <li>Nilai Bulan antara 1-12</li>
                                 <li>Jenis Komoditas : Aneka Cabai, Bawang Merah (Case Sensitif)</li>
-                                <li>Proses input : jika Ada Tahun, Bulan, Komoditas, OPT, Region(Kabupaten/Kota) yang sama, Data yang sudah ada akan ditimpa, jika tidak ada akan menambah data baru</li>
-                                <li>Nilai LTS Berupa Angka</li>
+                                <li>Nilai LTS, LKS, LP Berupa Angka</li>
                                 <li>jangan menambahkan data baris baru/mengedit kolom regency_id di excel, setiap baris terdapat id untuk mengenali kabupaten/kota!</li>
                                 <li>jika anda ingin tetap menambah baris baru, copy baris di excel ini yang ingin anda tambahkan, pastikan regency_id sama dengan baris yang anda copy!</li>
                                 <li>hapus data baris kabupaten/kota yang tidak diperlukan!</li>
