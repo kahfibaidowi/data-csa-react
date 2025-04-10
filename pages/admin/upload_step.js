@@ -11,7 +11,7 @@ import { toast } from "react-toastify"
 class Page extends React.Component{
     state={
         input:{
-            date:2024,
+            date:2025,
             data:[]
         }
     }
@@ -145,8 +145,8 @@ class Page extends React.Component{
                             <span className="form-text">
                                 <ol className="mt-4">
                                     <li>Halaman ini digunakan untuk import data curah hujan dengan metode chunk</li>
-                                    <li><strong>Penting, Semua data pada tahun 2024 sebelumnya akan dihapus, digantikan data baru!</strong></li>
-                                    <li>Digunakan pada tahun 2024</li>
+                                    <li><strong>Penting, Semua data pada tahun 2025 sebelumnya akan dihapus, digantikan data baru!</strong></li>
+                                    <li>Digunakan pada tahun 2025</li>
                                     <li>Pilih file excel curah hujan dulu sebelum import data</li>
                                 </ol>
                             </span>
