@@ -41,7 +41,7 @@ class Page extends React.Component{
         const data=values.data
 
         await this.request.apiUpdateCurahHujanMultiple({
-            tahun:this.state.input.date,
+            tahun:values.date,
             data:data
         })
         .then(data=>{
@@ -122,6 +122,16 @@ class Page extends React.Component{
                     {formik=>(
                         <form onSubmit={formik.handleSubmit}>
                             <div className="mb-3">
+                                <input 
+                                    type="text" 
+                                    className="form-control"
+                                    name="date"
+                                    onChange={formik.handleChange}
+                                    value={formik.values.date}
+                                    placeholder="tahun"
+                                />
+                            </div>
+                            <div className="mb-3">
                                 <button className="btn btn-secondary" type="button" onClick={()=>this.inputRef.current.click()}>
                                     <FiUpload/> File Excel
                                 </button>
@@ -145,8 +155,8 @@ class Page extends React.Component{
                             <span className="form-text">
                                 <ol className="mt-4">
                                     <li>Halaman ini digunakan untuk import data curah hujan dengan metode chunk</li>
-                                    <li><strong>Penting, Semua data pada tahun 2025 sebelumnya akan dihapus, digantikan data baru!</strong></li>
-                                    <li>Digunakan pada tahun 2025</li>
+                                    <li><strong>Penting, Semua data pada tahun "{formik.values.date}" sebelumnya akan dihapus, digantikan data baru!</strong></li>
+                                    <li>Digunakan pada tahun "{formik.values.date}"</li>
                                     <li>Pilih file excel curah hujan dulu sebelum import data</li>
                                 </ol>
                             </span>
